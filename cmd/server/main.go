@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/bullgare/pow-ddos-protection/internal/app/server"
+	"github.com/bullgare/pow-ddos-protection/internal/infra/repositories"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/transport/listener"
 	handlers "github.com/bullgare/pow-ddos-protection/internal/usecase/handlers/server"
 )
@@ -47,8 +48,10 @@ func run(ctx context.Context) (err error) {
 		return fmt.Errorf("creating tcp listener: %w", err)
 	}
 
+	wowQuotes := repositories.NewWOW()
+
 	handlerAuth := handlers.Auth()
-	handlerData := handlers.Data()
+	handlerData := handlers.Data(wowQuotes)
 
 	srv, err := server.New(lsn, handlerAuth, handlerData, onError)
 	if err != nil {

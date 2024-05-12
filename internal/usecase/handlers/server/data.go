@@ -3,13 +3,14 @@ package server
 import (
 	"context"
 
-	"github.com/bullgare/pow-ddos-protection/internal/usecase/contracts"
+	dcontracts "github.com/bullgare/pow-ddos-protection/internal/domain/contracts"
+	ucontracts "github.com/bullgare/pow-ddos-protection/internal/usecase/contracts"
 )
 
-func Data() HandlerData {
-	return func(ctx context.Context, req contracts.DataRequest) (contracts.DataResponse, error) {
-		return contracts.DataResponse{
-			MyPrecious: "TODO", // TODO
+func Data(wowQuotes dcontracts.WOWQuotes) HandlerData {
+	return func(ctx context.Context, req ucontracts.DataRequest) (ucontracts.DataResponse, error) {
+		return ucontracts.DataResponse{
+			MyPrecious: wowQuotes.GetRandomQuote(),
 		}, nil
 	}
 }
