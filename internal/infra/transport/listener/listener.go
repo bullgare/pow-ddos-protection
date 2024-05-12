@@ -82,7 +82,7 @@ func (l *Listener) handleConnections(ctx context.Context, lsn net.Listener, hand
 					continue
 				}
 
-				go l.connHandler.HandleBlockingWithHandlerFunc(ctx, conn, handler)
+				go l.connHandler.ProcessRequests(ctx, conn, handler)
 			}
 		}
 	}()

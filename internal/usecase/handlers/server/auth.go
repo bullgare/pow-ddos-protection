@@ -4,10 +4,12 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/bullgare/pow-ddos-protection/internal/usecase/contracts"
+	"github.com/bullgare/pow-ddos-protection/internal/usecase/users"
 )
 
 const rndSize = 16
@@ -15,12 +17,17 @@ const rndSize = 16
 // Auth generates a rule for a client to pass the auth.
 func Auth() HandlerAuth {
 	return func(ctx context.Context, req contracts.AuthRequest) (contracts.AuthResponse, error) {
+		user, ok := users.FromContext(ctx)
+		if !ok {
+			return contracts.AuthResponse{}, errors.New("user data is not provided")
+		}
+
 		randomString, err := generateRandomString(rndSize)
 		if err != nil {
 			return contracts.AuthResponse{}, fmt.Errorf("generating random seed: %w", err)
 		}
 
-		seed := generateSeed(req.ClientRemoteAddress, req.RequestTime, randomString)
+		seed := generateSeed(user.RemoteAddress, user.RequestTime, randomString)
 
 		return contracts.AuthResponse{
 			Seed: seed,

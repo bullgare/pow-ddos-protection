@@ -38,8 +38,7 @@ func New(
 	}, nil
 }
 
-var _ common.Handler = &Server{}
-
+// Server knows how to handle incoming requests from transport/listener.
 type Server struct {
 	lsn         *listener.Listener
 	handlerAuth server.HandlerAuth
@@ -87,11 +86,8 @@ func (s *Server) Handle(ctx context.Context, req common.Request) (common.Respons
 	}, nil
 }
 
-func (s *Server) Auth(ctx context.Context, req common.Request) (common.Response, error) {
-	request := contracts.AuthRequest{
-		ClientRemoteAddress: req.Meta.RemoteAddress,
-		RequestTime:         req.Meta.Time,
-	}
+func (s *Server) Auth(ctx context.Context, _ common.Request) (common.Response, error) {
+	request := contracts.AuthRequest{}
 
 	resp, err := s.handlerAuth(ctx, request)
 	if err != nil {
@@ -111,10 +107,8 @@ func (s *Server) Data(ctx context.Context, req common.Request) (common.Response,
 	}
 
 	request := contracts.DataRequest{
-		ClientRemoteAddress: req.Meta.RemoteAddress,
-		RequestTime:         req.Meta.Time,
-		Token:               token,
-		OriginalSeed:        seed,
+		Token:        token,
+		OriginalSeed: seed,
 	}
 
 	resp, err := s.handlerData(ctx, request)
