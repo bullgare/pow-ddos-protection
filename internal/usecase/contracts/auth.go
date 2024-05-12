@@ -1,9 +1,10 @@
-package contract
+package contracts
 
 import (
 	"time"
 )
 
+// FIXME do we need it?
 type AuthRequest struct {
 	ClientRemoteAddress string
 	RequestTime         time.Time

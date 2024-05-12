@@ -21,6 +21,8 @@ type Response struct {
 	Payload []string
 }
 
+type HandlerFunc func(context.Context, Request) (Response, error)
+
 type Handler interface {
 	Handle(context.Context, Request) (Response, error)
 }

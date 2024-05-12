@@ -6,11 +6,20 @@ import (
 	"fmt"
 
 	"github.com/bullgare/pow-ddos-protection/internal/infra/protocol/common"
-	contract2 "github.com/bullgare/pow-ddos-protection/internal/usecase/handlers/contract"
+	"github.com/bullgare/pow-ddos-protection/internal/infra/transport/listener"
+	"github.com/bullgare/pow-ddos-protection/internal/usecase/contracts"
 	"github.com/bullgare/pow-ddos-protection/internal/usecase/handlers/server"
 )
 
-func New(handlerAuth server.HandlerAuth, handlerData server.HandlerData, onError func(error)) (*Server, error) {
+func New(
+	lsn *listener.Listener,
+	handlerAuth server.HandlerAuth,
+	handlerData server.HandlerData,
+	onError func(error),
+) (*Server, error) {
+	if lsn == nil {
+		return nil, errors.New("listener is required")
+	}
 	if handlerAuth == nil {
 		return nil, errors.New("usecase auth handler is required")
 	}
@@ -22,6 +31,7 @@ func New(handlerAuth server.HandlerAuth, handlerData server.HandlerData, onError
 	}
 
 	return &Server{
+		lsn:         lsn,
 		handlerAuth: handlerAuth,
 		handlerData: handlerData,
 		onError:     onError,
@@ -31,9 +41,18 @@ func New(handlerAuth server.HandlerAuth, handlerData server.HandlerData, onError
 var _ common.Handler = &Server{}
 
 type Server struct {
+	lsn         *listener.Listener
 	handlerAuth server.HandlerAuth
 	handlerData server.HandlerData
 	onError     func(error)
+}
+
+func (s *Server) Start(ctx context.Context) error {
+	return s.lsn.StartWithHandlerFunc(ctx, s.Handle)
+}
+
+func (s *Server) Stop() {
+	s.lsn.Stop()
 }
 
 func (s *Server) Handle(ctx context.Context, req common.Request) (common.Response, error) {
@@ -69,7 +88,7 @@ func (s *Server) Handle(ctx context.Context, req common.Request) (common.Respons
 }
 
 func (s *Server) Auth(ctx context.Context, req common.Request) (common.Response, error) {
-	request := contract2.AuthRequest{
+	request := contracts.AuthRequest{
 		ClientRemoteAddress: req.Meta.RemoteAddress,
 		RequestTime:         req.Meta.Time,
 	}
@@ -91,7 +110,7 @@ func (s *Server) Data(ctx context.Context, req common.Request) (common.Response,
 		return common.Response{}, err
 	}
 
-	request := contract2.DataRequest{
+	request := contracts.DataRequest{
 		ClientRemoteAddress: req.Meta.RemoteAddress,
 		RequestTime:         req.Meta.Time,
 		Token:               token,

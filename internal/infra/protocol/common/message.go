@@ -36,3 +36,7 @@ func MapPayloadToTokenAndSeed(payload []string) (token, seed string, err error) 
 
 	return payload[0], payload[1], nil
 }
+
+func GeneratePayloadFromTokenAndSeed(token, seed string) []string {
+	return []string{token, seed}
+}

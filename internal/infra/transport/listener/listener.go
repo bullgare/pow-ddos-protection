@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/bullgare/pow-ddos-protection/internal/infra/protocol/common"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/transport/connection"
 )
 
@@ -41,14 +42,18 @@ type Listener struct {
 	chQuit      chan struct{}
 }
 
-func (l *Listener) Start(ctx context.Context) error {
+func (l *Listener) StartWithHandlerFunc(ctx context.Context, handler common.HandlerFunc) error {
+	if handler == nil {
+		return errors.New("handler is required")
+	}
+
 	lsn, err := net.Listen("tcp", l.address)
 	if err != nil {
 		return fmt.Errorf("listening %s: %w", l.address, err)
 	}
 	defer func() { _ = lsn.Close() }()
 
-	l.handleConnections(ctx, lsn)
+	l.handleConnections(ctx, lsn, handler)
 	<-l.chQuit
 
 	return nil
@@ -58,7 +63,7 @@ func (l *Listener) Stop() {
 	close(l.chQuit)
 }
 
-func (l *Listener) handleConnections(ctx context.Context, lsn net.Listener) {
+func (l *Listener) handleConnections(ctx context.Context, lsn net.Listener, handler common.HandlerFunc) {
 	go func() {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
@@ -77,7 +82,7 @@ func (l *Listener) handleConnections(ctx context.Context, lsn net.Listener) {
 					continue
 				}
 
-				go l.connHandler.HandleBlocking(ctx, conn)
+				go l.connHandler.HandleBlockingWithHandlerFunc(ctx, conn, handler)
 			}
 		}
 	}()

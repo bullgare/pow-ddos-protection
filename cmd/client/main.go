@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/bullgare/pow-ddos-protection/internal/app/server"
+	"github.com/bullgare/pow-ddos-protection/internal/infra/clients/wordofwisdom"
+	tclient "github.com/bullgare/pow-ddos-protection/internal/infra/transport/client"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/transport/connection"
-	"github.com/bullgare/pow-ddos-protection/internal/infra/transport/listener"
-	handlers "github.com/bullgare/pow-ddos-protection/internal/usecase/handlers/server"
+	"github.com/bullgare/pow-ddos-protection/internal/usecase/handlers/client"
 )
 
 const envListenerAddress = "LISTENER_ADDRESS"
@@ -41,31 +41,26 @@ func run(ctx context.Context) (err error) {
 		return fmt.Errorf("env variable %q is required", envListenerAddress)
 	}
 
-	lgr.Info(fmt.Sprintf("starting the server on %s...", address))
+	lgr.Info(fmt.Sprintf("client will communicate to %s...", address))
 
 	connHandler, err := connection.New(onError)
 	if err != nil {
 		return fmt.Errorf("creating connection handler: %w", err)
 	}
 
-	lsn, err := listener.New(address, connHandler, onError)
+	transClient, err := tclient.New(address, connHandler)
 	if err != nil {
-		return fmt.Errorf("creating tcp listener: %w", err)
+		return fmt.Errorf("creating transport client: %w", err)
 	}
 
-	handlerAuth := handlers.Auth()
-	handlerData := handlers.Data()
-
-	srv, err := server.New(lsn, handlerAuth, handlerData, onError)
+	wowClient, err := wordofwisdom.New(transClient)
 	if err != nil {
-		return fmt.Errorf("creating app server: %w", err)
+		return fmt.Errorf("creating word of wisdom client: %w", err)
 	}
-	defer srv.Stop()
 
-	err = srv.Start(ctx)
-	if err != nil {
-		return fmt.Errorf("starting app server: %w", err)
-	}
+	clientRunner := client.RunWordOfWisdom(wowClient, onError, shareInfoFunc(lgr))
+
+	clientRunner(ctx)
 
 	return nil
 }
@@ -75,5 +70,11 @@ func onErrorFunc(lgr *slog.Logger) func(err error) {
 		if err != nil {
 			lgr.Error(err.Error())
 		}
+	}
+}
+
+func shareInfoFunc(lgr *slog.Logger) func(msg string) {
+	return func(msg string) {
+		lgr.Info(msg)
 	}
 }

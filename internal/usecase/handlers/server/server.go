@@ -3,8 +3,8 @@ package server
 import (
 	"context"
 
-	contract2 "github.com/bullgare/pow-ddos-protection/internal/usecase/handlers/contract"
+	"github.com/bullgare/pow-ddos-protection/internal/usecase/contracts"
 )
 
-type HandlerAuth func(ctx context.Context, req contract2.AuthRequest) (contract2.AuthResponse, error)
-type HandlerData func(ctx context.Context, req contract2.DataRequest) (contract2.DataResponse, error)
+type HandlerAuth func(ctx context.Context, req contracts.AuthRequest) (contracts.AuthResponse, error)
+type HandlerData func(ctx context.Context, req contracts.DataRequest) (contracts.DataResponse, error)

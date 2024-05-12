@@ -7,22 +7,22 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bullgare/pow-ddos-protection/internal/usecase/handlers/contract"
+	"github.com/bullgare/pow-ddos-protection/internal/usecase/contracts"
 )
 
 const rndSize = 16
 
 // Auth generates a rule for a client to pass the auth.
 func Auth() HandlerAuth {
-	return func(ctx context.Context, req contract.AuthRequest) (contract.AuthResponse, error) {
+	return func(ctx context.Context, req contracts.AuthRequest) (contracts.AuthResponse, error) {
 		randomString, err := generateRandomString(rndSize)
 		if err != nil {
-			return contract.AuthResponse{}, fmt.Errorf("generating random seed: %w", err)
+			return contracts.AuthResponse{}, fmt.Errorf("generating random seed: %w", err)
 		}
 
 		seed := generateSeed(req.ClientRemoteAddress, req.RequestTime, randomString)
 
-		return contract.AuthResponse{
+		return contracts.AuthResponse{
 			Seed: seed,
 		}, nil
 	}
