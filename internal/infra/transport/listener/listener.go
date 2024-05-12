@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/bullgare/pow-ddos-protection/internal/infra/protocol/common"
@@ -117,8 +118,15 @@ func (l *Listener) processRequests(
 				l.onError(fmt.Errorf("reading from conn: %w", err))
 				continue
 			}
+
+			// not ideal, but we always restart the connection on the client side, that's why we cannot rely on a port.
+			remoteAddress := conn.RemoteAddr().String()
+			remoteAddressChunks := strings.Split(remoteAddress, ":")
+			if len(remoteAddressChunks) > 1 {
+				remoteAddress = strings.Join(remoteAddressChunks[:len(remoteAddressChunks)-1], ":")
+			}
 			ctx := users.NewContext(parentCtx, users.User{
-				RemoteAddress: conn.RemoteAddr().String(),
+				RemoteAddress: remoteAddress,
 				RequestTime:   time.Now(),
 			})
 

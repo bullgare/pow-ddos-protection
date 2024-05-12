@@ -2,13 +2,38 @@ package server
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	dcontracts "github.com/bullgare/pow-ddos-protection/internal/domain/contracts"
 	ucontracts "github.com/bullgare/pow-ddos-protection/internal/usecase/contracts"
+	"github.com/bullgare/pow-ddos-protection/internal/usecase/users"
 )
 
-func Data(wowQuotes dcontracts.WOWQuotes) HandlerData {
+func Data(
+	authStorage dcontracts.AuthStorage,
+	wowQuotes dcontracts.WOWQuotes,
+) HandlerData {
 	return func(ctx context.Context, req ucontracts.DataRequest) (ucontracts.DataResponse, error) {
+		user, ok := users.FromContext(ctx)
+		if !ok {
+			return ucontracts.DataResponse{}, errors.New("user not found")
+		}
+
+		cacheReq := dcontracts.AuthData{
+			Seed:   req.OriginalSeed,
+			UserID: user.RemoteAddress,
+		}
+		exists, err := authStorage.CheckExists(ctx, cacheReq)
+		if err != nil {
+			return ucontracts.DataResponse{}, fmt.Errorf("authStorage.CheckExists: %w", err)
+		}
+		if !exists {
+			return ucontracts.DataResponse{}, errors.New("user did not request an auth")
+		}
+
+		// FIXME check token
+
 		return ucontracts.DataResponse{
 			MyPrecious: wowQuotes.GetRandomQuote(),
 		}, nil

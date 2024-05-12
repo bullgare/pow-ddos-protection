@@ -7,6 +7,7 @@ import (
 )
 
 func NewWOW() WOW {
+	// taken from https://www.churchofjesuschrist.org/bc/content/ldsorg/content/english/manual/missionary/pdf/36953_the-word-of-wisdom-eng.pdf
 	return WOW{
 		quotes: []string{
 			"A Word of Wisdom, for the benefit of the . . . church, and also the saints in Zion . . .",

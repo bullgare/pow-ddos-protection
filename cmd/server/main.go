@@ -12,7 +12,10 @@ import (
 	handlers "github.com/bullgare/pow-ddos-protection/internal/usecase/handlers/server"
 )
 
-const envNetworkAddress = "NETWORK_ADDRESS"
+const (
+	envNetworkAddress = "NETWORK_ADDRESS"
+	envRedisAddress   = "REDIS_ADDRESS"
+)
 
 func main() {
 	// TODO add graceful shutdown
@@ -42,6 +45,11 @@ func run(ctx context.Context) (err error) {
 		return fmt.Errorf("env variable %q is required", envNetworkAddress)
 	}
 
+	redisAddress, ok := os.LookupEnv(envRedisAddress)
+	if !ok {
+		return fmt.Errorf("env variable %q is required", envRedisAddress)
+	}
+
 	lgr.Info(fmt.Sprintf("starting the server on %s...", address))
 
 	lsn, err := listener.New(address, onError)
@@ -49,10 +57,15 @@ func run(ctx context.Context) (err error) {
 		return fmt.Errorf("creating tcp listener: %w", err)
 	}
 
+	authStorage, err := repositories.NewAuthStorage(redisAddress)
+	if err != nil {
+		return fmt.Errorf("creating auth storage: %w", err)
+	}
+
 	wowQuotes := repositories.NewWOW()
 
-	handlerAuth := handlers.Auth()
-	handlerData := handlers.Data(wowQuotes)
+	handlerAuth := handlers.Auth(authStorage)
+	handlerData := handlers.Data(authStorage, wowQuotes)
 
 	srv, err := server.New(lsn, handlerAuth, handlerData, onError)
 	if err != nil {
