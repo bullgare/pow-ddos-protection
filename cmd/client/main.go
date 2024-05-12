@@ -11,7 +11,7 @@ import (
 	"github.com/bullgare/pow-ddos-protection/internal/usecase/handlers/client"
 )
 
-const envListenerAddress = "LISTENER_ADDRESS"
+const envNetworkAddress = "NETWORK_ADDRESS"
 
 func main() {
 	// TODO add graceful shutdown
@@ -26,6 +26,7 @@ func main() {
 
 func run(ctx context.Context) (err error) {
 	lgr := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	lgr = lgr.With("type", "client")
 
 	onError := onErrorFunc(lgr)
 
@@ -35,9 +36,9 @@ func run(ctx context.Context) (err error) {
 		}
 	}()
 
-	address, ok := os.LookupEnv(envListenerAddress)
+	address, ok := os.LookupEnv(envNetworkAddress)
 	if !ok {
-		return fmt.Errorf("env variable %q is required", envListenerAddress)
+		return fmt.Errorf("env variable %q is required", envNetworkAddress)
 	}
 
 	lgr.Info(fmt.Sprintf("client will communicate to %s...", address))
