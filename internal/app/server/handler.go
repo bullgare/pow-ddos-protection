@@ -10,7 +10,7 @@ import (
 	"github.com/bullgare/pow-ddos-protection/internal/usecase/handlers/server"
 )
 
-func New(handlerAuth server.HandlerAuth, handlerData server.HandlerData, onError func(error)) (*Handler, error) {
+func New(handlerAuth server.HandlerAuth, handlerData server.HandlerData, onError func(error)) (*Server, error) {
 	if handlerAuth == nil {
 		return nil, errors.New("usecase auth handler is required")
 	}
@@ -21,31 +21,31 @@ func New(handlerAuth server.HandlerAuth, handlerData server.HandlerData, onError
 		return nil, errors.New("onError is required")
 	}
 
-	return &Handler{
+	return &Server{
 		handlerAuth: handlerAuth,
 		handlerData: handlerData,
 		onError:     onError,
 	}, nil
 }
 
-var _ common.Handler = &Handler{}
+var _ common.Handler = &Server{}
 
-type Handler struct {
+type Server struct {
 	handlerAuth server.HandlerAuth
 	handlerData server.HandlerData
 	onError     func(error)
 }
 
-func (h *Handler) Handle(ctx context.Context, req common.Request) (common.Response, error) {
+func (s *Server) Handle(ctx context.Context, req common.Request) (common.Response, error) {
 	var (
 		resp common.Response
 		err  error
 	)
 	switch req.Type {
 	case common.MessageTypeClientAuthReq:
-		resp, err = h.Auth(ctx, req)
+		resp, err = s.Auth(ctx, req)
 	case common.MessageTypeClientDataReq:
-		resp, err = h.Data(ctx, req)
+		resp, err = s.Data(ctx, req)
 	default:
 		resp, err = common.Response{},
 			fmt.Errorf(
@@ -60,7 +60,7 @@ func (h *Handler) Handle(ctx context.Context, req common.Request) (common.Respon
 		return resp, nil
 	}
 
-	h.onError(err)
+	s.onError(err)
 
 	return common.Response{
 		Type:    common.MessageTypeError,
@@ -68,13 +68,13 @@ func (h *Handler) Handle(ctx context.Context, req common.Request) (common.Respon
 	}, nil
 }
 
-func (h *Handler) Auth(ctx context.Context, req common.Request) (common.Response, error) {
+func (s *Server) Auth(ctx context.Context, req common.Request) (common.Response, error) {
 	request := contract2.AuthRequest{
 		ClientRemoteAddress: req.Meta.RemoteAddress,
 		RequestTime:         req.Meta.Time,
 	}
 
-	resp, err := h.handlerAuth(ctx, request)
+	resp, err := s.handlerAuth(ctx, request)
 	if err != nil {
 		return common.Response{}, fmt.Errorf("usecase auth handler for %v: %w", request, err)
 	}
@@ -85,7 +85,7 @@ func (h *Handler) Auth(ctx context.Context, req common.Request) (common.Response
 	}, nil
 }
 
-func (h *Handler) Data(ctx context.Context, req common.Request) (common.Response, error) {
+func (s *Server) Data(ctx context.Context, req common.Request) (common.Response, error) {
 	token, seed, err := common.MapPayloadToTokenAndSeed(req.Payload)
 	if err != nil {
 		return common.Response{}, err
@@ -98,7 +98,7 @@ func (h *Handler) Data(ctx context.Context, req common.Request) (common.Response
 		OriginalSeed:        seed,
 	}
 
-	resp, err := h.handlerData(ctx, request)
+	resp, err := s.handlerData(ctx, request)
 	if err != nil {
 		return common.Response{}, fmt.Errorf("usecase data handler for %v: %w", request, err)
 	}

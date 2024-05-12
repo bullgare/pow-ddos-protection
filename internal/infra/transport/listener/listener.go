@@ -1,4 +1,4 @@
-package server
+package listener
 
 import (
 	"context"
@@ -13,7 +13,7 @@ func New(
 	address string,
 	connHandler *connection.Connection,
 	onError func(error),
-) (*Server, error) {
+) (*Listener, error) {
 	if address == "" {
 		return nil, errors.New("address is required")
 	}
@@ -26,7 +26,7 @@ func New(
 
 	chQuit := make(chan struct{})
 
-	return &Server{
+	return &Listener{
 		address:     address,
 		connHandler: connHandler,
 		onError:     onError,
@@ -34,31 +34,31 @@ func New(
 	}, nil
 }
 
-type Server struct {
+type Listener struct {
 	address     string
 	connHandler *connection.Connection
 	onError     func(error)
 	chQuit      chan struct{}
 }
 
-func (s *Server) Start(ctx context.Context) error {
-	lsn, err := net.Listen("tcp", s.address)
+func (l *Listener) Start(ctx context.Context) error {
+	lsn, err := net.Listen("tcp", l.address)
 	if err != nil {
-		return fmt.Errorf("listening %s: %w", s.address, err)
+		return fmt.Errorf("listening %s: %w", l.address, err)
 	}
-	defer lsn.Close()
+	defer func() { _ = lsn.Close() }()
 
-	s.handleConnections(ctx, lsn)
-	<-s.chQuit
+	l.handleConnections(ctx, lsn)
+	<-l.chQuit
 
 	return nil
 }
 
-func (s *Server) Stop() {
-	close(s.chQuit)
+func (l *Listener) Stop() {
+	close(l.chQuit)
 }
 
-func (s *Server) handleConnections(ctx context.Context, lsn net.Listener) {
+func (l *Listener) handleConnections(ctx context.Context, lsn net.Listener) {
 	go func() {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
@@ -66,18 +66,18 @@ func (s *Server) handleConnections(ctx context.Context, lsn net.Listener) {
 		for {
 			select {
 			case <-ctx.Done():
-				close(s.chQuit)
+				close(l.chQuit)
 				return
-			case <-s.chQuit:
+			case <-l.chQuit:
 				return
 			default:
-				conn, err := lsn.Accept() // FIXME check errors
+				conn, err := lsn.Accept()
 				if err != nil {
-					s.onError(fmt.Errorf("accepting tcp connection: %w", err))
+					l.onError(fmt.Errorf("accepting tcp connection: %w", err))
 					continue
 				}
 
-				go s.connHandler.HandleBlocking(ctx, conn)
+				go l.connHandler.HandleBlocking(ctx, conn)
 			}
 		}
 	}()

@@ -7,9 +7,9 @@ import (
 	"os"
 
 	"github.com/bullgare/pow-ddos-protection/internal/app/server"
-	pserver "github.com/bullgare/pow-ddos-protection/internal/infra/protocol/server"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/transport/connection"
-	handler "github.com/bullgare/pow-ddos-protection/internal/usecase/handlers/server"
+	"github.com/bullgare/pow-ddos-protection/internal/infra/transport/listener"
+	handlers "github.com/bullgare/pow-ddos-protection/internal/usecase/handlers/server"
 )
 
 const envListenerAddress = "LISTENER_ADDRESS"
@@ -43,28 +43,29 @@ func run(ctx context.Context) (err error) {
 
 	lgr.Info(fmt.Sprintf("starting the server on %s...", address))
 
-	handlerAuth := handler.Auth()
-	handlerData := handler.Data()
+	handlerAuth := handlers.Auth()
+	handlerData := handlers.Data()
 
-	protoHandler, err := pserver.New(handlerAuth, handlerData, onError)
-	if err != nil {
-		return fmt.Errorf("creating protocol handler: %w", err)
-	}
-
-	connHandler, err := connection.New(protoHandler, onError)
-	if err != nil {
-		return fmt.Errorf("creating connHandler: %w", err)
-	}
-
-	srv, err := server.New(address, connHandler, onError)
+	// FIXME try rearranging dependencies here
+	srv, err := server.New(handlerAuth, handlerData, onError)
 	if err != nil {
 		return fmt.Errorf("creating app server: %w", err)
 	}
-	defer srv.Stop()
 
-	err = srv.Start(ctx)
+	connHandler, err := connection.New(srv, onError)
 	if err != nil {
-		return fmt.Errorf("starting tcp server: %w", err)
+		return fmt.Errorf("creating connection handler: %w", err)
+	}
+
+	lsn, err := listener.New(address, connHandler, onError)
+	if err != nil {
+		return fmt.Errorf("creating tcp listener: %w", err)
+	}
+	defer lsn.Stop()
+
+	err = lsn.Start(ctx)
+	if err != nil {
+		return fmt.Errorf("starting tcp listener: %w", err)
 	}
 
 	return nil
