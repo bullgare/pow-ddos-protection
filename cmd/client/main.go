@@ -8,7 +8,6 @@ import (
 
 	"github.com/bullgare/pow-ddos-protection/internal/infra/clients/wordofwisdom"
 	tclient "github.com/bullgare/pow-ddos-protection/internal/infra/transport/client"
-	"github.com/bullgare/pow-ddos-protection/internal/infra/transport/connection"
 	"github.com/bullgare/pow-ddos-protection/internal/usecase/handlers/client"
 )
 
@@ -43,12 +42,7 @@ func run(ctx context.Context) (err error) {
 
 	lgr.Info(fmt.Sprintf("client will communicate to %s...", address))
 
-	connHandler, err := connection.New(onError)
-	if err != nil {
-		return fmt.Errorf("creating connection handler: %w", err)
-	}
-
-	transClient, err := tclient.New(address, connHandler)
+	transClient, err := tclient.New(address)
 	if err != nil {
 		return fmt.Errorf("creating transport client: %w", err)
 	}

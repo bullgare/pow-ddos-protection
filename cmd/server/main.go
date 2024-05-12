@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/bullgare/pow-ddos-protection/internal/app/server"
-	"github.com/bullgare/pow-ddos-protection/internal/infra/transport/connection"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/transport/listener"
 	handlers "github.com/bullgare/pow-ddos-protection/internal/usecase/handlers/server"
 )
@@ -43,12 +42,7 @@ func run(ctx context.Context) (err error) {
 
 	lgr.Info(fmt.Sprintf("starting the server on %s...", address))
 
-	connHandler, err := connection.New(onError)
-	if err != nil {
-		return fmt.Errorf("creating connection handler: %w", err)
-	}
-
-	lsn, err := listener.New(address, connHandler, onError)
+	lsn, err := listener.New(address, onError)
 	if err != nil {
 		return fmt.Errorf("creating tcp listener: %w", err)
 	}
