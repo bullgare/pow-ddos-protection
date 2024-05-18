@@ -58,7 +58,7 @@ func (c *Client) GetData(ctx context.Context, req contracts.DataRequest) (contra
 
 	switch response.Type {
 	case common.MessageTypeSrvDataResp:
-		return contracts.DataResponse{MyPrecious: response.Payload[0]}, nil
+		return contracts.DataResponse{Quote: response.Payload[0]}, nil
 	case common.MessageTypeError:
 		return contracts.DataResponse{}, fmt.Errorf("server returned an error: %s", strings.Join(response.Payload, ";"))
 	default:

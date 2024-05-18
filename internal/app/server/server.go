@@ -118,6 +118,6 @@ func (s *Server) Data(ctx context.Context, req common.Request) (common.Response,
 
 	return common.Response{
 		Type:    common.MessageTypeSrvDataResp,
-		Payload: []string{resp.MyPrecious},
+		Payload: []string{resp.Quote},
 	}, nil
 }

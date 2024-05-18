@@ -54,7 +54,7 @@ func RunWordOfWisdom(
 			return
 		}
 
-		shareInfo(fmt.Sprintf("%d: success! got %q", iteration, wowData.MyPrecious))
+		shareInfo(fmt.Sprintf("%d: success! got %q", iteration, wowData.Quote))
 	}
 
 	return func(ctx context.Context) {

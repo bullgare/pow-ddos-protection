@@ -15,6 +15,7 @@ func Auth(
 	seedGenerator ucontracts.SeedGenerator,
 	authChecker ucontracts.Authorizer,
 	authStorage dcontracts.AuthStorage,
+	shareInfo func(string),
 ) HandlerAuth {
 	return func(ctx context.Context, req ucontracts.AuthRequest) (ucontracts.AuthResponse, error) {
 		user, ok := users.FromContext(ctx)
@@ -27,8 +28,10 @@ func Auth(
 			return ucontracts.AuthResponse{}, fmt.Errorf("generating seed: %w", err)
 		}
 
-		// FIXME level should come from a rate limiter
-		seed = authChecker.MergeWithConfig(seed, ucontracts.AuthorizerConfig{DifficultyLevelPercent: 70})
+		authConfig := authChecker.GenerateConfig()
+		seed = authChecker.MergeWithConfig(seed, authConfig)
+
+		shareInfo(fmt.Sprintf("using difficulty level=%d%%", authConfig.DifficultyLevelPercent))
 
 		cacheReq := dcontracts.AuthData{
 			Seed:   seed,

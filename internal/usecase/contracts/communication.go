@@ -16,7 +16,7 @@ type DataRequest struct {
 }
 
 type DataResponse struct {
-	MyPrecious string
+	Quote string
 }
 
 type ClientWordOfWisdom interface {

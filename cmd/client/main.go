@@ -54,7 +54,9 @@ func run(ctx context.Context) (err error) {
 		return fmt.Errorf("creating word of wisdom client: %w", err)
 	}
 
-	authGenerator := hashcash.NewAuthorizer(hashcash.BitsLenMin, hashcash.BitsLenMax, hashcash.SaltLen)
+	difficultyManager := hashcash.NoOpDifficultyManagerForClient{} // TODO Ideally, there should be 2 constructors and 2 interfaces (server/client)
+
+	authGenerator := hashcash.NewAuthorizer(hashcash.BitsLenMin, hashcash.BitsLenMax, hashcash.SaltLen, difficultyManager)
 
 	clientRunner := client.RunWordOfWisdom(authGenerator, wowClient, onError, shareInfoFunc(lgr))
 

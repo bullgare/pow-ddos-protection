@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 
 	"github.com/bullgare/pow-ddos-protection/internal/app/server"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/auth/hashcash"
@@ -16,8 +17,9 @@ import (
 const (
 	envNetworkAddress = "NETWORK_ADDRESS"
 	envRedisAddress   = "REDIS_ADDRESS"
+	envTargetRPS      = "TARGET_RPS"
 
-	infoLogsEnabled = false
+	infoLogsEnabled = false // FIXME
 )
 
 func main() {
@@ -53,6 +55,15 @@ func run(ctx context.Context) (err error) {
 		return fmt.Errorf("env variable %q is required", envRedisAddress)
 	}
 
+	targetRPSString, ok := os.LookupEnv(envTargetRPS)
+	if !ok {
+		return fmt.Errorf("env variable %q is required", envTargetRPS)
+	}
+	targetRPS, err := strconv.ParseFloat(targetRPSString, 64)
+	if err != nil {
+		return fmt.Errorf("parsing %q to float64: %w", envTargetRPS, err)
+	}
+
 	lgr.Info(fmt.Sprintf("starting the server on %s...", address))
 
 	lsn, err := listener.New(address, onError, shareInfoFunc(infoLogsEnabled, lgr))
@@ -69,9 +80,12 @@ func run(ctx context.Context) (err error) {
 
 	seedGenerator := hashcash.NewSeedGenerator(hashcash.SeedRandomLen)
 
-	authChecker := hashcash.NewAuthorizer(hashcash.BitsLenMin, hashcash.BitsLenMax, hashcash.SaltLen)
+	difficultyManager, stop := hashcash.NewDifficultyManager(targetRPS, hashcash.DifficultyChangeStep)
+	defer stop()
 
-	handlerAuth := handlers.Auth(seedGenerator, authChecker, authStorage)
+	authChecker := hashcash.NewAuthorizer(hashcash.BitsLenMin, hashcash.BitsLenMax, hashcash.SaltLen, difficultyManager)
+
+	handlerAuth := handlers.Auth(seedGenerator, authChecker, authStorage, shareInfoFunc(infoLogsEnabled, lgr))
 	handlerData := handlers.Data(authChecker, authStorage, wowQuotes)
 
 	srv, err := server.New(lsn, handlerAuth, handlerData, onError)

@@ -8,6 +8,7 @@ services:
     environment:
       NETWORK_ADDRESS: "0.0.0.0:7100"
       REDIS_ADDRESS: "redis:6379"
+      TARGET_RPS: "5"
     ports:
       - "7100:7100"
     depends_on:

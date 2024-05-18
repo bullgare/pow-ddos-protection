@@ -44,7 +44,7 @@ func Data(
 		}
 
 		return ucontracts.DataResponse{
-			MyPrecious: wowQuotes.GetRandomQuote(),
+			Quote: wowQuotes.GetRandomQuote(),
 		}, nil
 	}
 }
