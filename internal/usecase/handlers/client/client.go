@@ -26,9 +26,15 @@ func RunWordOfWisdom(
 			return
 		}
 
+		seed, cfg, err := authGenerator.ParseConfigFrom(authParams.Seed)
+		if err != nil {
+			onError(fmt.Errorf("%d: parsing config from raw seed: %w", iteration, err))
+			return
+		}
+
 		// generating a token.
 		start := time.Now()
-		token, err := authGenerator.Generate(authParams.Seed)
+		token, err := authGenerator.GenerateToken(seed, cfg)
 		if err != nil {
 			onError(fmt.Errorf("%d: generating token: %w", iteration, err))
 			return

@@ -4,7 +4,6 @@ import (
 	"context"
 )
 
-// TODO ideally, some parameter (like bitLen in our case) could be dynamic, depending on traffic, for instance.
 type AuthData struct {
 	Seed   string
 	UserID string

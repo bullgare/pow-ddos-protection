@@ -2,7 +2,6 @@ package contracts
 
 import (
 	"context"
-	"time"
 )
 
 type AuthRequest struct{}
@@ -12,10 +11,8 @@ type AuthResponse struct {
 }
 
 type DataRequest struct {
-	ClientRemoteAddress string
-	RequestTime         time.Time
-	Token               string
-	OriginalSeed        string
+	Token        string
+	OriginalSeed string
 }
 
 type DataResponse struct {

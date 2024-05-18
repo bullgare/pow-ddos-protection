@@ -1,6 +1,18 @@
 package contracts
 
+import (
+	"time"
+)
+
+type Config struct {
+	DifficultyLevelPercent int
+}
+
 type Authorizer interface {
-	Generate(string) (string, error)
-	Check(string) bool
+	GenerateSeed(string, time.Time) (string, error)
+	GenerateToken(string, Config) (string, error)
+	Check(string, Config) bool
+
+	MergeWithConfig(string, Config) string
+	ParseConfigFrom(string) (string, Config, error)
 }

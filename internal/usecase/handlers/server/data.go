@@ -34,7 +34,12 @@ func Data(
 		}
 		_ = authStorage.Delete(ctx, cacheReq)
 
-		if !authChecker.Check(req.Token) {
+		token, cfg, err := authChecker.ParseConfigFrom(req.Token)
+		if err != nil {
+			return ucontracts.DataResponse{}, fmt.Errorf("parsing config from raw token: %w", err)
+		}
+
+		if !authChecker.Check(token, cfg) {
 			return ucontracts.DataResponse{}, errors.New("user provided invalid auth token")
 		}
 

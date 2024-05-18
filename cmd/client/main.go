@@ -42,7 +42,7 @@ func run(ctx context.Context) (err error) {
 		return fmt.Errorf("env variable %q is required", envNetworkAddress)
 	}
 
-	lgr.Info(fmt.Sprintf("client will communicate to %s...", address))
+	lgr.Info(fmt.Sprintf("client is ready to communicate with %s...", address))
 
 	transClient, err := tclient.New(address)
 	if err != nil {
@@ -54,7 +54,7 @@ func run(ctx context.Context) (err error) {
 		return fmt.Errorf("creating word of wisdom client: %w", err)
 	}
 
-	authGenerator := hashcash.NewAuthorizer(hashcash.BitLen, hashcash.SaltLen)
+	authGenerator := hashcash.NewAuthorizer(hashcash.SeedRandomLen, hashcash.BitsLenMin, hashcash.BitsLenMax, hashcash.SaltLen)
 
 	clientRunner := client.RunWordOfWisdom(authGenerator, wowClient, onError, shareInfoFunc(lgr))
 
