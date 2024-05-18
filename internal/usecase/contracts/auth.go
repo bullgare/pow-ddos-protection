@@ -4,15 +4,18 @@ import (
 	"time"
 )
 
-type Config struct {
+type AuthorizerConfig struct {
 	DifficultyLevelPercent int
 }
 
 type Authorizer interface {
-	GenerateSeed(string, time.Time) (string, error)
-	GenerateToken(string, Config) (string, error)
-	Check(string, Config) bool
+	GenerateToken(string, AuthorizerConfig) (string, error)
+	Check(string, AuthorizerConfig) bool
 
-	MergeWithConfig(string, Config) string
-	ParseConfigFrom(string) (string, Config, error)
+	MergeWithConfig(string, AuthorizerConfig) string
+	ParseConfigFrom(string) (string, AuthorizerConfig, error)
+}
+
+type SeedGenerator interface {
+	Generate(string, time.Time) (string, error)
 }

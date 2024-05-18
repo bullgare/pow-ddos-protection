@@ -54,7 +54,7 @@ func run(ctx context.Context) (err error) {
 		return fmt.Errorf("creating word of wisdom client: %w", err)
 	}
 
-	authGenerator := hashcash.NewAuthorizer(hashcash.SeedRandomLen, hashcash.BitsLenMin, hashcash.BitsLenMax, hashcash.SaltLen)
+	authGenerator := hashcash.NewAuthorizer(hashcash.BitsLenMin, hashcash.BitsLenMax, hashcash.SaltLen)
 
 	clientRunner := client.RunWordOfWisdom(authGenerator, wowClient, onError, shareInfoFunc(lgr))
 

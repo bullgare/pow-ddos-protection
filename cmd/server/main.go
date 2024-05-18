@@ -67,9 +67,11 @@ func run(ctx context.Context) (err error) {
 
 	wowQuotes := repositories.NewWOW()
 
-	authChecker := hashcash.NewAuthorizer(hashcash.SeedRandomLen, hashcash.BitsLenMin, hashcash.BitsLenMax, hashcash.SaltLen)
+	seedGenerator := hashcash.NewSeedGenerator(hashcash.SeedRandomLen)
 
-	handlerAuth := handlers.Auth(authChecker, authStorage)
+	authChecker := hashcash.NewAuthorizer(hashcash.BitsLenMin, hashcash.BitsLenMax, hashcash.SaltLen)
+
+	handlerAuth := handlers.Auth(seedGenerator, authChecker, authStorage)
 	handlerData := handlers.Data(authChecker, authStorage, wowQuotes)
 
 	srv, err := server.New(lsn, handlerAuth, handlerData, onError)

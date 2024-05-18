@@ -11,20 +11,24 @@ import (
 )
 
 // Auth generates a rule for a client to pass the auth.
-func Auth(authChecker ucontracts.Authorizer, authStorage dcontracts.AuthStorage) HandlerAuth {
+func Auth(
+	seedGenerator ucontracts.SeedGenerator,
+	authChecker ucontracts.Authorizer,
+	authStorage dcontracts.AuthStorage,
+) HandlerAuth {
 	return func(ctx context.Context, req ucontracts.AuthRequest) (ucontracts.AuthResponse, error) {
 		user, ok := users.FromContext(ctx)
 		if !ok {
 			return ucontracts.AuthResponse{}, errors.New("user data is not provided")
 		}
 
-		seed, err := authChecker.GenerateSeed(user.RemoteAddress, user.RequestTime)
+		seed, err := seedGenerator.Generate(user.RemoteAddress, user.RequestTime)
 		if err != nil {
 			return ucontracts.AuthResponse{}, fmt.Errorf("generating seed: %w", err)
 		}
 
 		// FIXME level should come from a rate limiter
-		seed = authChecker.MergeWithConfig(seed, ucontracts.Config{DifficultyLevelPercent: 70})
+		seed = authChecker.MergeWithConfig(seed, ucontracts.AuthorizerConfig{DifficultyLevelPercent: 70})
 
 		cacheReq := dcontracts.AuthData{
 			Seed:   seed,
