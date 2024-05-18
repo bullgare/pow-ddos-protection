@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"slices"
 	"strings"
 	"time"
@@ -16,9 +17,14 @@ import (
 	"github.com/bullgare/pow-ddos-protection/internal/usecase/users"
 )
 
+const (
+	processConnTimeout = 500 * time.Millisecond
+)
+
 func New(
 	address string,
 	onError func(error),
+	shareInfo func(string),
 ) (*Listener, error) {
 	if address == "" {
 		return nil, errors.New("address is required")
@@ -26,20 +32,25 @@ func New(
 	if onError == nil {
 		return nil, errors.New("onError is required")
 	}
+	if shareInfo == nil {
+		return nil, errors.New("shareInfo is required")
+	}
 
 	chQuit := make(chan struct{})
 
 	return &Listener{
-		address: address,
-		onError: onError,
-		chQuit:  chQuit,
+		address:   address,
+		onError:   onError,
+		shareInfo: shareInfo,
+		chQuit:    chQuit,
 	}, nil
 }
 
 type Listener struct {
-	address string
-	onError func(error)
-	chQuit  chan struct{}
+	address   string
+	onError   func(error)
+	shareInfo func(string)
+	chQuit    chan struct{}
 }
 
 func (l *Listener) StartWithHandlerFunc(ctx context.Context, handler common.HandlerFunc) error {
@@ -47,7 +58,14 @@ func (l *Listener) StartWithHandlerFunc(ctx context.Context, handler common.Hand
 		return errors.New("handler is required")
 	}
 
-	lsn, err := net.Listen("tcp", l.address)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go func() {
+		<-l.chQuit
+		cancel()
+	}()
+
+	lsn, err := (&net.ListenConfig{}).Listen(ctx, "tcp", l.address)
 	if err != nil {
 		return fmt.Errorf("listening %s: %w", l.address, err)
 	}
@@ -65,15 +83,9 @@ func (l *Listener) Stop() {
 
 func (l *Listener) handleConnections(ctx context.Context, lsn net.Listener, handler common.HandlerFunc) {
 	go func() {
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-
 		for {
 			select {
 			case <-ctx.Done():
-				close(l.chQuit)
-				return
-			case <-l.chQuit:
 				return
 			default:
 				conn, err := lsn.Accept()
@@ -82,20 +94,26 @@ func (l *Listener) handleConnections(ctx context.Context, lsn net.Listener, hand
 					continue
 				}
 
-				go l.processRequests(ctx, conn, handler)
+				go l.processConnRequests(ctx, conn, handler)
 			}
 		}
 	}()
 }
 
-// processRequests handles all requests for one connection.
-// TODO we might limit connection time to not exhaust the connections.
-func (l *Listener) processRequests(
+func (l *Listener) processConnRequests(
 	parentCtx context.Context,
 	conn net.Conn,
 	handler common.HandlerFunc,
 ) {
 	defer func() { _ = conn.Close() }()
+
+	// setting a timeout for connection to not exhaust number of available connections.
+	_ = conn.SetDeadline(time.Now().Add(processConnTimeout))
+
+	l.shareInfo(fmt.Sprintf("accepted connection from %s", conn.RemoteAddr()))
+	defer func() {
+		l.shareInfo(fmt.Sprintf("processed connection from %s", conn.RemoteAddr()))
+	}()
 
 	if handler == nil {
 		l.onError(errors.New("handler is required"))
@@ -112,6 +130,9 @@ func (l *Listener) processRequests(
 		default:
 			raw, err := r.ReadString(transport.MessageDelimiter)
 			if err == io.EOF {
+				return
+			}
+			if errors.Is(err, os.ErrDeadlineExceeded) {
 				return
 			}
 			if err != nil {

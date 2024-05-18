@@ -13,7 +13,16 @@ services:
     depends_on:
       - redis
 
-  client:
+  client1:
+    build:
+      context: ../..
+      dockerfile: build/dev/Dockerfile_client
+    environment:
+      NETWORK_ADDRESS: "server:7100"
+    depends_on:
+      - server
+
+  client2:
     build:
       context: ../..
       dockerfile: build/dev/Dockerfile_client
