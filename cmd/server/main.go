@@ -16,6 +16,8 @@ import (
 const (
 	envNetworkAddress = "NETWORK_ADDRESS"
 	envRedisAddress   = "REDIS_ADDRESS"
+
+	infoLogsEnabled = false
 )
 
 func main() {
@@ -53,7 +55,7 @@ func run(ctx context.Context) (err error) {
 
 	lgr.Info(fmt.Sprintf("starting the server on %s...", address))
 
-	lsn, err := listener.New(address, onError, shareInfoFunc(lgr))
+	lsn, err := listener.New(address, onError, shareInfoFunc(infoLogsEnabled, lgr))
 	if err != nil {
 		return fmt.Errorf("creating tcp listener: %w", err)
 	}
@@ -92,8 +94,10 @@ func onErrorFunc(lgr *slog.Logger) func(err error) {
 	}
 }
 
-func shareInfoFunc(lgr *slog.Logger) func(msg string) {
+func shareInfoFunc(enabled bool, lgr *slog.Logger) func(msg string) {
 	return func(msg string) {
-		lgr.Info(msg)
+		if enabled {
+			lgr.Info(msg)
+		}
 	}
 }

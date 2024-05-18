@@ -13,14 +13,14 @@ import (
 )
 
 const (
-	BitLen  = 24
+	BitLen  = 20
 	SaltLen = 32
 )
 
 const (
 	authorizerVersionV1 = "v1"
 
-	versionSeparator = ":"
+	separator = ";"
 )
 
 func NewAuthorizer(bitsLen, saltLen uint) Authorizer {
@@ -43,11 +43,11 @@ func (a Authorizer) Generate(uniqueSeed string) (string, error) {
 		return "", fmt.Errorf("generating token: %w", err)
 	}
 
-	return authorizerVersionV1 + versionSeparator + token, nil
+	return authorizerVersionV1 + separator + token, nil
 }
 
 func (a Authorizer) Check(token string) bool {
-	chunks := strings.SplitN(token, versionSeparator, 2)
+	chunks := strings.SplitN(token, separator, 2)
 	if len(chunks) != 2 {
 		return false
 	}
