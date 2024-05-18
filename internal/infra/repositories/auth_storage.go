@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	redisTTL      = 1 * time.Minute
+	redisTTL      = 2 * time.Minute
 	dataSeparator = "|"
 )
 

@@ -5,21 +5,12 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
 
 	"github.com/bullgare/pow-ddos-protection/internal/app/server"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/auth/hashcash"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/repositories"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/transport/listener"
 	handlers "github.com/bullgare/pow-ddos-protection/internal/usecase/handlers/server"
-)
-
-const (
-	envNetworkAddress = "NETWORK_ADDRESS"
-	envRedisAddress   = "REDIS_ADDRESS"
-	envTargetRPS      = "TARGET_RPS"
-
-	infoLogsEnabled = false // FIXME
 )
 
 func main() {
@@ -45,33 +36,19 @@ func run(ctx context.Context) (err error) {
 		}
 	}()
 
-	address, ok := os.LookupEnv(envNetworkAddress)
-	if !ok {
-		return fmt.Errorf("env variable %q is required", envNetworkAddress)
-	}
-
-	redisAddress, ok := os.LookupEnv(envRedisAddress)
-	if !ok {
-		return fmt.Errorf("env variable %q is required", envRedisAddress)
-	}
-
-	targetRPSString, ok := os.LookupEnv(envTargetRPS)
-	if !ok {
-		return fmt.Errorf("env variable %q is required", envTargetRPS)
-	}
-	targetRPS, err := strconv.ParseFloat(targetRPSString, 64)
+	cfg, err := newConfig()
 	if err != nil {
-		return fmt.Errorf("parsing %q to float64: %w", envTargetRPS, err)
+		return fmt.Errorf("parsing config: %w", err)
 	}
 
-	lgr.Info(fmt.Sprintf("starting the server on %s...", address))
+	lgr.Info(fmt.Sprintf("starting the server on %s...", cfg.NetworkAddress))
 
-	lsn, err := listener.New(address, onError, shareInfoFunc(infoLogsEnabled, lgr))
+	lsn, err := listener.New(cfg.NetworkAddress, onError, shareInfoFunc(cfg.InfoLogsEnabled, lgr))
 	if err != nil {
 		return fmt.Errorf("creating tcp listener: %w", err)
 	}
 
-	authStorage, err := repositories.NewAuthStorage(redisAddress)
+	authStorage, err := repositories.NewAuthStorage(cfg.RedisAddress)
 	if err != nil {
 		return fmt.Errorf("creating auth storage: %w", err)
 	}
@@ -80,12 +57,12 @@ func run(ctx context.Context) (err error) {
 
 	seedGenerator := hashcash.NewSeedGenerator(hashcash.SeedRandomLen)
 
-	difficultyManager, stop := hashcash.NewDifficultyManager(targetRPS, hashcash.DifficultyChangeStep)
+	difficultyManager, stop := hashcash.NewDifficultyManager(cfg.TargetRPS, hashcash.DifficultyChangeStep)
 	defer stop()
 
 	authChecker := hashcash.NewAuthorizer(hashcash.BitsLenMin, hashcash.BitsLenMax, hashcash.SaltLen, difficultyManager)
 
-	handlerAuth := handlers.Auth(seedGenerator, authChecker, authStorage, shareInfoFunc(infoLogsEnabled, lgr))
+	handlerAuth := handlers.Auth(seedGenerator, authChecker, authStorage, shareInfoFunc(cfg.InfoLogsEnabled, lgr))
 	handlerData := handlers.Data(authChecker, authStorage, wowQuotes)
 
 	srv, err := server.New(lsn, handlerAuth, handlerData, onError)

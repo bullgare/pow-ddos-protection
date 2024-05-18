@@ -14,15 +14,9 @@ func NewDifficultyManager(
 	targetRPS float64,
 	levelChangeStep int,
 ) (_ *DifficultyManager, stopFunc func()) {
-	targetReqsPerBucket := int64(tickDuration.Seconds() * targetRPS)
-
 	manager := &DifficultyManager{
 		targetRPS: targetRPS,
 		step:      levelChangeStep,
-
-		curLevel:      20, // we don't want to start too fast, so it's not 0
-		curReqBucket:  0,
-		prevReqBucket: targetReqsPerBucket, // by default, we expect we are hitting the target exactly, so it's not 0
 
 		chIncrRequests: make(chan struct{}),
 		chGetRPS:       make(chan chan float64),
@@ -32,7 +26,12 @@ func NewDifficultyManager(
 		chQuit: make(chan struct{}),
 	}
 
-	manager.startLoop()
+	curLevel := 30 // we don't want to start too fast, so it's not 0
+	curReqBucket := int64(0)
+	targetReqsPerBucket := int64(tickDuration.Seconds() * targetRPS)
+	prevReqBucket := targetReqsPerBucket // by default, we expect we are hitting the target exactly, so it's not 0
+
+	manager.startLoop(curLevel, curReqBucket, prevReqBucket)
 	stopFn := func() {
 		close(manager.chQuit)
 	}
@@ -44,12 +43,6 @@ var _ contracts.DifficultyManager = &DifficultyManager{}
 type DifficultyManager struct {
 	targetRPS float64
 	step      int
-
-	// FIXME move into m.startLoop
-	// fields below are only manipulated through channels (in m.startLoop)
-	curLevel      int
-	curReqBucket  int64
-	prevReqBucket int64
 
 	chIncrRequests chan struct{}
 	chGetRPS       chan chan float64
@@ -105,8 +98,16 @@ func (m *DifficultyManager) getCurrentLevel() int {
 
 // we only manipulate curLevel, curReqBucket, prevReqBucket fields here.
 // yes, it could be a bit inaccurate potentially as we are not using mutexes, but it is faster, which is more important here.
-func (m *DifficultyManager) startLoop() {
-	go func() {
+func (m *DifficultyManager) startLoop(
+	curLevel int,
+	curReqBucket int64,
+	prevReqBucket int64,
+) {
+	go func(
+		curLevel int,
+		curReqBucket int64,
+		prevReqBucket int64,
+	) {
 		ticker := time.NewTicker(tickDuration)
 		defer ticker.Stop()
 
@@ -116,23 +117,23 @@ func (m *DifficultyManager) startLoop() {
 			// increment number of requests, change buckets, send average RPS for the tick period, get or set current level, or quit.
 			select {
 			case <-m.chIncrRequests:
-				m.curReqBucket++
+				curReqBucket++
 			case <-ticker.C:
-				m.prevReqBucket = m.curReqBucket
-				m.curReqBucket = 0
+				prevReqBucket = curReqBucket
+				curReqBucket = 0
 				start = time.Now()
 			case chSendRPS := <-m.chGetRPS:
 				timeElapsed := time.Since(start)
-				chSendRPS <- m.calculateRPS(m.curReqBucket, m.prevReqBucket, timeElapsed, tickDuration)
+				chSendRPS <- m.calculateRPS(curReqBucket, prevReqBucket, timeElapsed, tickDuration)
 			case chSendLevel := <-m.chGetCurLevel:
-				chSendLevel <- m.curLevel
-			case curLevel := <-m.chSetCurLevel:
-				m.curLevel = curLevel
+				chSendLevel <- curLevel
+			case level := <-m.chSetCurLevel:
+				curLevel = level
 			case <-m.chQuit:
 				return
 			}
 		}
-	}()
+	}(curLevel, curReqBucket, prevReqBucket)
 }
 
 // FIXME add unit-tests.
