@@ -45,6 +45,11 @@ func (s *AuthStorage) Store(ctx context.Context, data contracts.AuthData) error 
 	return cmd.Err()
 }
 
+func (s *AuthStorage) Delete(ctx context.Context, data contracts.AuthData) error {
+	cmd := s.redisClient.Del(ctx, s.generateKey(data))
+	return cmd.Err()
+}
+
 func (s *AuthStorage) CheckExists(ctx context.Context, data contracts.AuthData) (bool, error) {
 	value, err := s.redisClient.Get(ctx, s.generateKey(data)).Result()
 	if err == redis.Nil {

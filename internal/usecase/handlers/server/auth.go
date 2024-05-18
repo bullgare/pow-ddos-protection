@@ -52,11 +52,11 @@ func generateRandomString(n int) (string, error) {
 		return "", err
 	}
 
-	return base64.URLEncoding.EncodeToString(b), nil
+	return base64.StdEncoding.EncodeToString(b), nil
 }
 
 func generateSeed(clientRemoteAddress string, requestTime time.Time, randomString string) string {
-	return base64.URLEncoding.EncodeToString([]byte(
+	return base64.StdEncoding.EncodeToString([]byte(
 		fmt.Sprintf("%s-%d-%s", clientRemoteAddress, requestTime.UnixNano(), randomString),
 	))
 }

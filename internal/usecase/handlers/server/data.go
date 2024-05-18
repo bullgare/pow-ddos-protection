@@ -11,6 +11,7 @@ import (
 )
 
 func Data(
+	authChecker ucontracts.Authorizer,
 	authStorage dcontracts.AuthStorage,
 	wowQuotes dcontracts.WOWQuotes,
 ) HandlerData {
@@ -31,8 +32,11 @@ func Data(
 		if !exists {
 			return ucontracts.DataResponse{}, errors.New("user did not request an auth")
 		}
+		_ = authStorage.Delete(ctx, cacheReq)
 
-		// FIXME check token
+		if !authChecker.Check(req.Token) {
+			return ucontracts.DataResponse{}, errors.New("user provided invalid auth token")
+		}
 
 		return ucontracts.DataResponse{
 			MyPrecious: wowQuotes.GetRandomQuote(),

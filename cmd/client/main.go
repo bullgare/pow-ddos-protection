@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/bullgare/pow-ddos-protection/internal/infra/auth/hashcash"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/clients/wordofwisdom"
 	tclient "github.com/bullgare/pow-ddos-protection/internal/infra/transport/client"
 	"github.com/bullgare/pow-ddos-protection/internal/usecase/handlers/client"
@@ -53,7 +54,9 @@ func run(ctx context.Context) (err error) {
 		return fmt.Errorf("creating word of wisdom client: %w", err)
 	}
 
-	clientRunner := client.RunWordOfWisdom(wowClient, onError, shareInfoFunc(lgr))
+	authGenerator := hashcash.NewAuthorizer(hashcash.BitLen, hashcash.SaltLen)
+
+	clientRunner := client.RunWordOfWisdom(authGenerator, wowClient, onError, shareInfoFunc(lgr))
 
 	clientRunner(ctx)
 

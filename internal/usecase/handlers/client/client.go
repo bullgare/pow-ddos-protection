@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/bullgare/pow-ddos-protection/internal/usecase/contracts"
 )
@@ -12,6 +13,7 @@ const numberOfRequests = 3
 type Handler func(ctx context.Context)
 
 func RunWordOfWisdom(
+	authGenerator contracts.Authorizer,
 	clientWOW contracts.ClientWordOfWisdom,
 	onError func(error),
 	shareInfo func(string),
@@ -23,9 +25,14 @@ func RunWordOfWisdom(
 			return
 		}
 
-		// FIXME add pow auth logic
-		token := ""
-		shareInfo(fmt.Sprintf("using token %q", token))
+		start := time.Now()
+		token, err := authGenerator.Generate(authParams.Seed)
+		if err != nil {
+			onError(fmt.Errorf("generating token: %w", err))
+			return
+		}
+
+		shareInfo(fmt.Sprintf("using token %q (generated in %s)", token, time.Since(start).String()))
 
 		reqData := contracts.DataRequest{
 			OriginalSeed: authParams.Seed,

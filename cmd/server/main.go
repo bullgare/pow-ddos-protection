@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/bullgare/pow-ddos-protection/internal/app/server"
+	"github.com/bullgare/pow-ddos-protection/internal/infra/auth/hashcash"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/repositories"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/transport/listener"
 	handlers "github.com/bullgare/pow-ddos-protection/internal/usecase/handlers/server"
@@ -64,8 +65,10 @@ func run(ctx context.Context) (err error) {
 
 	wowQuotes := repositories.NewWOW()
 
+	authChecker := hashcash.NewAuthorizer(hashcash.BitLen, hashcash.SaltLen)
+
 	handlerAuth := handlers.Auth(authStorage)
-	handlerData := handlers.Data(authStorage, wowQuotes)
+	handlerData := handlers.Data(authChecker, authStorage, wowQuotes)
 
 	srv, err := server.New(lsn, handlerAuth, handlerData, onError)
 	if err != nil {
