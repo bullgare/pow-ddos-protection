@@ -14,9 +14,15 @@ rebuild-and-run-in-docker:
 		&& docker-compose -f ./build/dev/docker-compose.yaml rm -fsv
 
 
-# run unit-tests
+# run unit tests
 .PHONY: test
 .SILENT: test
 test:
-	go test -race ./...
+	go test -v -short -race ./...
+
+# run integration tests
+.PHONY: test-integration
+.SILENT: test-integration
+test-integration:
+	go test -test.run Integration --tags=integration ./...
 
