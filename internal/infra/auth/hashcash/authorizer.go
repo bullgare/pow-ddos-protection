@@ -69,12 +69,10 @@ func (a Authorizer) GenerateConfig() ucontracts.AuthorizerConfig {
 	return ucontracts.AuthorizerConfig{DifficultyLevelPercent: difficulty}
 }
 
-// FIXME add unit-tests.
 func (a Authorizer) MergeWithConfig(data string, cfg ucontracts.AuthorizerConfig) string {
 	return authorizerVersionV1 + separator + strconv.Itoa(cfg.DifficultyLevelPercent) + separator + data
 }
 
-// FIXME add unit-tests.
 func (a Authorizer) ParseConfigFrom(dataWithConfig string) (string, ucontracts.AuthorizerConfig, error) {
 	chunks := strings.SplitN(dataWithConfig, separator, 3)
 	if len(chunks) != 3 {
@@ -92,7 +90,6 @@ func (a Authorizer) ParseConfigFrom(dataWithConfig string) (string, ucontracts.A
 	return chunks[2], ucontracts.AuthorizerConfig{DifficultyLevelPercent: level}, nil
 }
 
-// FIXME add unit-tests.
 func (a Authorizer) calculateBitsLen(cfg ucontracts.AuthorizerConfig) uint {
 	level := cfg.DifficultyLevelPercent
 	level = max(level, 0)

@@ -136,7 +136,6 @@ func (m *DifficultyManager) startLoop(
 	}(curLevel, curReqBucket, prevReqBucket)
 }
 
-// FIXME add unit-tests.
 func (m *DifficultyManager) calculateRPS(curReqBucket, prevReqBucket int64, timeElapsed, tickDuration time.Duration) float64 {
 	if timeElapsed > tickDuration {
 		timeElapsed = tickDuration
