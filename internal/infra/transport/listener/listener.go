@@ -110,15 +110,17 @@ func (l *Listener) processConnRequests(
 	// setting a timeout for connection to not exhaust number of available connections.
 	_ = conn.SetDeadline(time.Now().Add(processConnTimeout))
 
+	ctxWithCancel, cancel := context.WithCancel(parentCtx)
+	defer cancel()
+	go func() {
+		<-ctxWithCancel.Done()
+		_ = conn.SetDeadline(time.Now())
+	}()
+
 	l.shareInfo(fmt.Sprintf("accepted connection from %s", conn.RemoteAddr()))
 	defer func() {
 		l.shareInfo(fmt.Sprintf("processed connection from %s", conn.RemoteAddr()))
 	}()
-
-	if handler == nil {
-		l.onError(errors.New("handler is required"))
-		return
-	}
 
 	r := bufio.NewReader(conn)
 	w := bufio.NewWriter(conn)

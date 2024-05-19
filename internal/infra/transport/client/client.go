@@ -7,9 +7,15 @@ import (
 	"fmt"
 	"net"
 	"slices"
+	"time"
 
 	"github.com/bullgare/pow-ddos-protection/internal/infra/protocol/common"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/transport"
+)
+
+const (
+	dialTimeout       = 100 * time.Millisecond
+	connectionTimeout = 500 * time.Millisecond
 )
 
 func New(
@@ -29,11 +35,20 @@ type Client struct {
 }
 
 func (c *Client) SendRequest(ctx context.Context, req common.Request) (common.Response, error) {
-	conn, err := net.Dial("tcp", c.address)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	conn, err := (&net.Dialer{Timeout: dialTimeout}).DialContext(ctx, "tcp", c.address)
 	if err != nil {
 		return common.Response{}, fmt.Errorf("connecting to %q: %w", c.address, err)
 	}
 	defer func() { _ = conn.Close() }()
+
+	_ = conn.SetDeadline(time.Now().Add(connectionTimeout))
+	go func() {
+		<-ctx.Done()
+		_ = conn.SetDeadline(time.Now())
+	}()
 
 	r := bufio.NewReader(conn)
 	w := bufio.NewWriter(conn)
@@ -56,7 +71,7 @@ func (c *Client) SendRequest(ctx context.Context, req common.Request) (common.Re
 
 	msg, err = transport.ParseRawMessage(rawResp)
 	if err != nil {
-		return common.Response{}, fmt.Errorf("parsing request: %w", err)
+		return common.Response{}, fmt.Errorf("parsing response: %w", err)
 	}
 
 	return common.Response{

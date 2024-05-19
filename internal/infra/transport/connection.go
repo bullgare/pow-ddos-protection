@@ -10,22 +10,6 @@ import (
 
 var MessageDelimiter = []byte(common.Terminator)[0]
 
-func SendMessage(w *bufio.Writer, msg common.Message) error {
-	raw := generateRawMessage(msg)
-
-	_, err := w.WriteString(raw)
-	if err != nil {
-		return fmt.Errorf("sending response %q: %w", raw, err)
-	}
-
-	err = w.Flush()
-	if err != nil {
-		return fmt.Errorf("flushing response: %w", err)
-	}
-
-	return nil
-}
-
 func ParseRawMessage(raw string) (common.Message, error) {
 	raw = strings.TrimSpace(raw)
 	chunks := strings.Split(raw, common.Separator)
@@ -54,6 +38,22 @@ func ParseRawMessage(raw string) (common.Message, error) {
 		Type:    common.MessageType(chunks[1]),
 		Payload: chunks[2:],
 	}, nil
+}
+
+func SendMessage(w *bufio.Writer, msg common.Message) error {
+	raw := generateRawMessage(msg)
+
+	_, err := w.WriteString(raw)
+	if err != nil {
+		return fmt.Errorf("sending response %q: %w", raw, err)
+	}
+
+	err = w.Flush()
+	if err != nil {
+		return fmt.Errorf("flushing response: %w", err)
+	}
+
+	return nil
 }
 
 func generateRawMessage(msg common.Message) string {

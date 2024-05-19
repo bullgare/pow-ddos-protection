@@ -13,3 +13,10 @@ rebuild-and-run-in-docker:
 	docker-compose -f ./build/dev/docker-compose.yaml up --force-recreate -V --build server client1 client2 \
 		&& docker-compose -f ./build/dev/docker-compose.yaml rm -fsv
 
+
+# run unit-tests
+.PHONY: test
+.SILENT: test
+test:
+	go test -race ./...
+
