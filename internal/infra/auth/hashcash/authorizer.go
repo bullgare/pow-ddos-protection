@@ -64,7 +64,7 @@ func (a Authorizer) Check(token string, cfg ucontracts.AuthorizerConfig) bool {
 }
 
 func (a Authorizer) GenerateConfig() ucontracts.AuthorizerConfig {
-	difficulty := a.difficultyManager.GetDifficulty()
+	difficulty := a.difficultyManager.GetDifficultyPercent()
 
 	return ucontracts.AuthorizerConfig{DifficultyLevelPercent: difficulty}
 }

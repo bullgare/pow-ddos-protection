@@ -9,7 +9,7 @@ services:
       NETWORK_ADDRESS: "0.0.0.0:7100"
       REDIS_ADDRESS: "redis:6379"
       TARGET_RPS: "5"
-      INFO_LOGS_ENABLED: "true"
+      INFO_LOGS_ENABLED: "false"
     ports:
       - "7100:7100"
     depends_on:
@@ -19,6 +19,7 @@ services:
     build:
       context: ../..
       dockerfile: build/dev/Dockerfile_client
+    image: bullgare/pow-ddos-protection-client
     environment:
       NETWORK_ADDRESS: "server:7100"
     depends_on:
@@ -28,6 +29,7 @@ services:
     build:
       context: ../..
       dockerfile: build/dev/Dockerfile_client
+    image: bullgare/pow-ddos-protection-client
     environment:
       NETWORK_ADDRESS: "server:7100"
     depends_on:

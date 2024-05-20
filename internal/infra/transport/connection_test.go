@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bullgare/pow-ddos-protection/internal/infra/protocol/common"
+	"github.com/bullgare/pow-ddos-protection/internal/infra/protocol"
 	"github.com/bullgare/pow-ddos-protection/pkg/assertion"
 )
 
@@ -16,15 +16,15 @@ func Test_ParseRawMessage(t *testing.T) {
 	tt := []struct {
 		name          string
 		raw           string
-		expected      common.Message
+		expected      protocol.Message
 		expectedError assert.ErrorAssertionFunc
 	}{
 		{
 			name: "happy path",
 			raw:  "v1|c2s_data_req|token|seed",
-			expected: common.Message{
-				Version: common.MessageVersionV1,
-				Type:    common.MessageTypeClientDataReq,
+			expected: protocol.Message{
+				Version: protocol.MessageVersionV1,
+				Type:    protocol.MessageTypeClientDataReq,
 				Payload: []string{"token", "seed"},
 			},
 			expectedError: assert.NoError,
@@ -32,19 +32,19 @@ func Test_ParseRawMessage(t *testing.T) {
 		{
 			name:          "not enough chunks - error",
 			raw:           "c2s_data_req|seed",
-			expected:      common.Message{},
+			expected:      protocol.Message{},
 			expectedError: assertion.ErrorWithMessage("expected message to have at least 3 parts: version, message type and payload, got 2"),
 		},
 		{
 			name:          "unexpected version - error",
 			raw:           "v2|c2s_data_req|token|seed",
-			expected:      common.Message{},
+			expected:      protocol.Message{},
 			expectedError: assertion.ErrorWithMessage("unexpected message version v2, should be v1"),
 		},
 		{
 			name:          "unexpected message type - error",
 			raw:           "v1|unknown_type|token|seed",
-			expected:      common.Message{},
+			expected:      protocol.Message{},
 			expectedError: assertion.ErrorWithMessage("unexpected message type \"unknown_type\""),
 		},
 	}
@@ -62,15 +62,15 @@ func Test_ParseRawMessage(t *testing.T) {
 func Test_SendMessage(t *testing.T) {
 	tt := []struct {
 		name          string
-		msg           common.Message
+		msg           protocol.Message
 		expected      string
 		expectedError assert.ErrorAssertionFunc
 	}{
 		{
 			name: "happy path",
-			msg: common.Message{
-				Version: common.MessageVersionV1,
-				Type:    common.MessageTypeClientDataReq,
+			msg: protocol.Message{
+				Version: protocol.MessageVersionV1,
+				Type:    protocol.MessageTypeClientDataReq,
 				Payload: []string{"token", "seed"},
 			},
 			expected:      "v1|c2s_data_req|token|seed\n",
@@ -94,14 +94,14 @@ func Test_SendMessage(t *testing.T) {
 func Test_generateRawMessage(t *testing.T) {
 	tt := []struct {
 		name     string
-		msg      common.Message
+		msg      protocol.Message
 		expected string
 	}{
 		{
 			name: "happy path",
-			msg: common.Message{
-				Version: common.MessageVersionV1,
-				Type:    common.MessageTypeSrvAuthResp,
+			msg: protocol.Message{
+				Version: protocol.MessageVersionV1,
+				Type:    protocol.MessageTypeSrvAuthResp,
 				Payload: []string{"1", "2", "3"},
 			},
 			expected: "v1|s2c_auth_resp|1|2|3\n",

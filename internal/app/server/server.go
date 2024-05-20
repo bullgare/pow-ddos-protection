@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/bullgare/pow-ddos-protection/internal/infra/protocol/common"
+	"github.com/bullgare/pow-ddos-protection/internal/infra/protocol"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/transport/listener"
 	"github.com/bullgare/pow-ddos-protection/internal/usecase/contracts"
 	"github.com/bullgare/pow-ddos-protection/internal/usecase/handlers/server"
@@ -54,23 +54,23 @@ func (s *Server) Stop() {
 	s.lsn.Stop()
 }
 
-func (s *Server) Handle(ctx context.Context, req common.Request) (common.Response, error) {
+func (s *Server) Handle(ctx context.Context, req protocol.Request) (protocol.Response, error) {
 	var (
-		resp common.Response
+		resp protocol.Response
 		err  error
 	)
 	switch req.Type {
-	case common.MessageTypeClientAuthReq:
+	case protocol.MessageTypeClientAuthReq:
 		resp, err = s.Auth(ctx, req)
-	case common.MessageTypeClientDataReq:
+	case protocol.MessageTypeClientDataReq:
 		resp, err = s.Data(ctx, req)
 	default:
-		resp, err = common.Response{},
+		resp, err = protocol.Response{},
 			fmt.Errorf(
 				"unexpected request to server: %q, only valid ones are: %s, %s",
 				req.Type,
-				common.MessageTypeClientAuthReq,
-				common.MessageTypeClientDataReq,
+				protocol.MessageTypeClientAuthReq,
+				protocol.MessageTypeClientDataReq,
 			)
 	}
 
@@ -80,30 +80,30 @@ func (s *Server) Handle(ctx context.Context, req common.Request) (common.Respons
 
 	s.onError(err)
 
-	return common.Response{
-		Type:    common.MessageTypeError,
+	return protocol.Response{
+		Type:    protocol.MessageTypeError,
 		Payload: []string{err.Error()}, // TODO use status codes instead
 	}, nil
 }
 
-func (s *Server) Auth(ctx context.Context, _ common.Request) (common.Response, error) {
+func (s *Server) Auth(ctx context.Context, _ protocol.Request) (protocol.Response, error) {
 	request := contracts.AuthRequest{}
 
 	resp, err := s.handlerAuth(ctx, request)
 	if err != nil {
-		return common.Response{}, fmt.Errorf("usecase auth handler for %v: %w", request, err)
+		return protocol.Response{}, fmt.Errorf("usecase auth handler for %v: %w", request, err)
 	}
 
-	return common.Response{
-		Type:    common.MessageTypeSrvAuthResp,
+	return protocol.Response{
+		Type:    protocol.MessageTypeSrvAuthResp,
 		Payload: []string{resp.Seed},
 	}, nil
 }
 
-func (s *Server) Data(ctx context.Context, req common.Request) (common.Response, error) {
-	token, seed, err := common.MapPayloadToTokenAndSeed(req.Payload)
+func (s *Server) Data(ctx context.Context, req protocol.Request) (protocol.Response, error) {
+	token, seed, err := protocol.MapPayloadToTokenAndSeed(req.Payload)
 	if err != nil {
-		return common.Response{}, err
+		return protocol.Response{}, err
 	}
 
 	request := contracts.DataRequest{
@@ -113,11 +113,11 @@ func (s *Server) Data(ctx context.Context, req common.Request) (common.Response,
 
 	resp, err := s.handlerData(ctx, request)
 	if err != nil {
-		return common.Response{}, fmt.Errorf("usecase data handler for %v: %w", request, err)
+		return protocol.Response{}, fmt.Errorf("usecase data handler for %v: %w", request, err)
 	}
 
-	return common.Response{
-		Type:    common.MessageTypeSrvDataResp,
+	return protocol.Response{
+		Type:    protocol.MessageTypeSrvDataResp,
 		Payload: []string{resp.Quote},
 	}, nil
 }

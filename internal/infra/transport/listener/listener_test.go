@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bullgare/pow-ddos-protection/internal/infra/protocol/common"
+	"github.com/bullgare/pow-ddos-protection/internal/infra/protocol"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/transport/client"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/transport/listener"
 	"github.com/bullgare/pow-ddos-protection/pkg/assertion"
@@ -27,21 +27,21 @@ func Test_ListenerTestSuite(t *testing.T) {
 // tests are a bit fragile as they involve network communication, more time needs to be invested here.
 func (s *ListenerTestSuite) Test_StartWithHandlerFunc() {
 	validAddress := "127.0.0.1:33411"
-	validReq := common.Request{
-		Type:    common.MessageTypeClientAuthReq,
+	validReq := protocol.Request{
+		Type:    protocol.MessageTypeClientAuthReq,
 		Payload: []string{""},
 	}
-	validResp := common.Response{
-		Type:    common.MessageTypeSrvAuthResp,
+	validResp := protocol.Response{
+		Type:    protocol.MessageTypeSrvAuthResp,
 		Payload: []string{"seed"},
 	}
 
 	tt := []struct {
 		name          string
-		req           common.Request
-		resp          common.Response
+		req           protocol.Request
+		resp          protocol.Response
 		err           error
-		expected      common.Response
+		expected      protocol.Response
 		expectedError assert.ErrorAssertionFunc
 	}{
 		{
@@ -54,10 +54,10 @@ func (s *ListenerTestSuite) Test_StartWithHandlerFunc() {
 		},
 		{
 			name:          "invalid request - error",
-			req:           common.Request{Type: "unknown req"},
+			req:           protocol.Request{Type: "unknown req"},
 			resp:          validResp,
 			err:           nil,
-			expected:      common.Response{Type: common.MessageTypeError, Payload: []string{"unexpected message type \"unknown req\""}},
+			expected:      protocol.Response{Type: protocol.MessageTypeError, Payload: []string{"unexpected message type \"unknown req\""}},
 			expectedError: assert.NoError,
 		},
 		{
@@ -65,15 +65,15 @@ func (s *ListenerTestSuite) Test_StartWithHandlerFunc() {
 			req:           validReq,
 			resp:          validResp,
 			err:           errors.New("some error"),
-			expected:      common.Response{Type: common.MessageTypeError, Payload: []string{"some error"}},
+			expected:      protocol.Response{Type: protocol.MessageTypeError, Payload: []string{"some error"}},
 			expectedError: assert.NoError,
 		},
 		{
 			name:          "server returning a wrong message is sent as an error",
 			req:           validReq,
-			resp:          common.Response{Type: "unknown resp", Payload: nil},
+			resp:          protocol.Response{Type: "unknown resp", Payload: nil},
 			err:           nil,
-			expected:      common.Response{},
+			expected:      protocol.Response{},
 			expectedError: assertion.ErrorWithMessage("parsing response: unexpected message type \"unknown resp\""),
 		},
 	}
@@ -84,7 +84,7 @@ func (s *ListenerTestSuite) Test_StartWithHandlerFunc() {
 			require.NoError(t, err, "creating listener")
 			defer lsn.Stop()
 			go func() {
-				err = lsn.StartWithHandlerFunc(context.Background(), func(_ context.Context, req common.Request) (common.Response, error) {
+				err = lsn.StartWithHandlerFunc(context.Background(), func(_ context.Context, req protocol.Request) (protocol.Response, error) {
 					require.Equal(t, tc.req, req)
 					time.Sleep(20 * time.Millisecond)
 					return tc.resp, tc.err
@@ -101,7 +101,7 @@ func (s *ListenerTestSuite) Test_StartWithHandlerFunc() {
 	}
 }
 
-func (s *ListenerTestSuite) sendTCPRequest(t *testing.T, ctx context.Context, address string, req common.Request) (common.Response, error) {
+func (s *ListenerTestSuite) sendTCPRequest(t *testing.T, ctx context.Context, address string, req protocol.Request) (protocol.Response, error) {
 	cl, err := client.New(address)
 	require.NoError(t, err, "creating client")
 

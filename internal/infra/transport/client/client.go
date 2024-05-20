@@ -9,7 +9,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/bullgare/pow-ddos-protection/internal/infra/protocol/common"
+	"github.com/bullgare/pow-ddos-protection/internal/infra/protocol"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/transport"
 )
 
@@ -34,13 +34,13 @@ type Client struct {
 	address string
 }
 
-func (c *Client) SendRequest(ctx context.Context, req common.Request) (common.Response, error) {
+func (c *Client) SendRequest(ctx context.Context, req protocol.Request) (protocol.Response, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	conn, err := (&net.Dialer{Timeout: dialTimeout}).DialContext(ctx, "tcp", c.address)
 	if err != nil {
-		return common.Response{}, fmt.Errorf("connecting to %q: %w", c.address, err)
+		return protocol.Response{}, fmt.Errorf("connecting to %q: %w", c.address, err)
 	}
 	defer func() { _ = conn.Close() }()
 
@@ -53,28 +53,28 @@ func (c *Client) SendRequest(ctx context.Context, req common.Request) (common.Re
 	r := bufio.NewReader(conn)
 	w := bufio.NewWriter(conn)
 
-	msg := common.Message{
-		Version: common.MessageVersionV1,
+	msg := protocol.Message{
+		Version: protocol.MessageVersionV1,
 		Type:    req.Type,
 		Payload: slices.Clone(req.Payload),
 	}
 
 	err = transport.SendMessage(w, msg)
 	if err != nil {
-		return common.Response{}, fmt.Errorf("sending request %v: %w", req, err)
+		return protocol.Response{}, fmt.Errorf("sending request %v: %w", req, err)
 	}
 
 	rawResp, err := r.ReadString(transport.MessageDelimiter)
 	if err != nil {
-		return common.Response{}, fmt.Errorf("reading response: %w", err)
+		return protocol.Response{}, fmt.Errorf("reading response: %w", err)
 	}
 
 	msg, err = transport.ParseRawMessage(rawResp)
 	if err != nil {
-		return common.Response{}, fmt.Errorf("parsing response: %w", err)
+		return protocol.Response{}, fmt.Errorf("parsing response: %w", err)
 	}
 
-	return common.Response{
+	return protocol.Response{
 		Type:    msg.Type,
 		Payload: slices.Clone(msg.Payload),
 	}, nil

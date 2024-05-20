@@ -24,5 +24,5 @@ type SeedGenerator interface {
 
 type DifficultyManager interface {
 	IncrRequests()
-	GetDifficulty() int
+	GetDifficultyPercent() int
 }

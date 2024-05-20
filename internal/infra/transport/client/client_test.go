@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bullgare/pow-ddos-protection/internal/infra/protocol/common"
+	"github.com/bullgare/pow-ddos-protection/internal/infra/protocol"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/transport/client"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/transport/listener"
 	"github.com/bullgare/pow-ddos-protection/pkg/assertion"
@@ -27,26 +27,26 @@ func Test_ClientTestSuite(t *testing.T) {
 // tests are a bit fragile as they involve network communication, more time needs to be invested here.
 func (s *ClientTestSuite) Test_SendRequest() {
 	validPort := 55144
-	validReq := common.Request{
-		Type:    common.MessageTypeClientAuthReq,
+	validReq := protocol.Request{
+		Type:    protocol.MessageTypeClientAuthReq,
 		Payload: []string{""},
 	}
-	validResp := common.Response{
-		Type:    common.MessageTypeSrvAuthResp,
+	validResp := protocol.Response{
+		Type:    protocol.MessageTypeSrvAuthResp,
 		Payload: []string{"seed"},
 	}
 
 	tt := []struct {
 		name                string
-		mockedServerHandler func(t *testing.T) common.HandlerFunc
-		req                 common.Request
-		expected            common.Response
+		mockedServerHandler func(t *testing.T) protocol.HandlerFunc
+		req                 protocol.Request
+		expected            protocol.Response
 		expectedError       assert.ErrorAssertionFunc
 	}{
 		{
 			name: "happy path",
-			mockedServerHandler: func(t *testing.T) common.HandlerFunc {
-				return func(_ context.Context, req common.Request) (common.Response, error) {
+			mockedServerHandler: func(t *testing.T) protocol.HandlerFunc {
+				return func(_ context.Context, req protocol.Request) (protocol.Response, error) {
 					assert.Equal(t, validReq, req)
 					return validResp, nil
 				}
@@ -57,8 +57,8 @@ func (s *ClientTestSuite) Test_SendRequest() {
 		},
 		{
 			name: "connection timeout -> error",
-			mockedServerHandler: func(t *testing.T) common.HandlerFunc {
-				return func(_ context.Context, req common.Request) (common.Response, error) {
+			mockedServerHandler: func(t *testing.T) protocol.HandlerFunc {
+				return func(_ context.Context, req protocol.Request) (protocol.Response, error) {
 					// client's connectionTimeout == 500ms
 					time.Sleep(700 * time.Millisecond)
 					assert.Equal(t, validReq, req)
@@ -66,7 +66,7 @@ func (s *ClientTestSuite) Test_SendRequest() {
 				}
 			},
 			req:      validReq,
-			expected: common.Response{},
+			expected: protocol.Response{},
 			// this is a bit fragile as it depends on the tests run order
 			expectedError: assertion.ErrorWithMessageContainsAny([]string{
 				"connecting to \"127.0.0.1:55146\": dial tcp 127.0.0.1:55146: connect: connection refused",
@@ -75,14 +75,14 @@ func (s *ClientTestSuite) Test_SendRequest() {
 		},
 		{
 			name: "unexpected response - error",
-			mockedServerHandler: func(t *testing.T) common.HandlerFunc {
-				return func(_ context.Context, req common.Request) (common.Response, error) {
+			mockedServerHandler: func(t *testing.T) protocol.HandlerFunc {
+				return func(_ context.Context, req protocol.Request) (protocol.Response, error) {
 					assert.Equal(t, validReq, req)
-					return common.Response{}, nil
+					return protocol.Response{}, nil
 				}
 			},
 			req:           validReq,
-			expected:      common.Response{},
+			expected:      protocol.Response{},
 			expectedError: assertion.ErrorWithMessage("parsing response: unexpected message type \"\""),
 		},
 	}
@@ -104,7 +104,7 @@ func (s *ClientTestSuite) Test_SendRequest() {
 	}
 }
 
-func (s *ClientTestSuite) createTCPListener(t *testing.T, address string, handler common.HandlerFunc) func() {
+func (s *ClientTestSuite) createTCPListener(t *testing.T, address string, handler protocol.HandlerFunc) func() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	lsn, err := listener.New(address, func(_ error) {}, func(_ string) {})

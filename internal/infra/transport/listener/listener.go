@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bullgare/pow-ddos-protection/internal/infra/protocol/common"
+	"github.com/bullgare/pow-ddos-protection/internal/infra/protocol"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/transport"
 	"github.com/bullgare/pow-ddos-protection/internal/usecase/users"
 )
@@ -53,7 +53,7 @@ type Listener struct {
 	chQuit    chan struct{}
 }
 
-func (l *Listener) StartWithHandlerFunc(ctx context.Context, handler common.HandlerFunc) error {
+func (l *Listener) StartWithHandlerFunc(ctx context.Context, handler protocol.HandlerFunc) error {
 	if handler == nil {
 		return errors.New("handler is required")
 	}
@@ -81,7 +81,7 @@ func (l *Listener) Stop() {
 	close(l.chQuit)
 }
 
-func (l *Listener) handleConnections(ctx context.Context, lsn net.Listener, handler common.HandlerFunc) {
+func (l *Listener) handleConnections(ctx context.Context, lsn net.Listener, handler protocol.HandlerFunc) {
 	go func() {
 		for {
 			select {
@@ -103,7 +103,7 @@ func (l *Listener) handleConnections(ctx context.Context, lsn net.Listener, hand
 func (l *Listener) processConnRequests(
 	parentCtx context.Context,
 	conn net.Conn,
-	handler common.HandlerFunc,
+	handler protocol.HandlerFunc,
 ) {
 	defer func() { _ = conn.Close() }()
 
@@ -156,11 +156,11 @@ func (l *Listener) processConnRequests(
 			msg, err := transport.ParseRawMessage(raw)
 			if err != nil {
 				l.onError(fmt.Errorf("parsing request: %w", err))
-				l.sendResponse(w, common.Response{Type: common.MessageTypeError, Payload: []string{err.Error()}})
+				l.sendResponse(w, protocol.Response{Type: protocol.MessageTypeError, Payload: []string{err.Error()}})
 				continue
 			}
 
-			req := common.Request{
+			req := protocol.Request{
 				Type:    msg.Type,
 				Payload: slices.Clone(msg.Payload),
 			}
@@ -168,7 +168,7 @@ func (l *Listener) processConnRequests(
 			resp, err := handler(ctx, req)
 			if err != nil {
 				l.onError(err)
-				l.sendResponse(w, common.Response{Type: common.MessageTypeError, Payload: []string{err.Error()}})
+				l.sendResponse(w, protocol.Response{Type: protocol.MessageTypeError, Payload: []string{err.Error()}})
 				continue
 			}
 
@@ -177,9 +177,9 @@ func (l *Listener) processConnRequests(
 	}
 }
 
-func (l *Listener) sendResponse(w *bufio.Writer, resp common.Response) {
-	msg := common.Message{
-		Version: common.MessageVersionV1,
+func (l *Listener) sendResponse(w *bufio.Writer, resp protocol.Response) {
+	msg := protocol.Message{
+		Version: protocol.MessageVersionV1,
 		Type:    resp.Type,
 		Payload: slices.Clone(resp.Payload),
 	}

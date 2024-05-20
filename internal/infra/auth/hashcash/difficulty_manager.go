@@ -8,8 +8,12 @@ import (
 
 const DifficultyChangeStep = 3
 
-const tickDuration = 5 * time.Second
+const bucketDuration = 5 * time.Second
 
+// NewDifficultyManager is a constructor.
+//
+// DifficultyManager decides the difficulty level in percent based on the target RPS and current RPS.
+// More details - ./README.md#difficulty-manager.
 func NewDifficultyManager(
 	targetRPS float64,
 	levelChangeStep int,
@@ -28,7 +32,7 @@ func NewDifficultyManager(
 
 	curLevel := 30 // we don't want to start too fast, so it's not 0
 	curReqBucket := int64(0)
-	targetReqsPerBucket := int64(tickDuration.Seconds() * targetRPS)
+	targetReqsPerBucket := int64(bucketDuration.Seconds() * targetRPS)
 	prevReqBucket := targetReqsPerBucket // by default, we expect we are hitting the target exactly, so it's not 0
 
 	manager.startLoop(curLevel, curReqBucket, prevReqBucket)
@@ -58,7 +62,7 @@ func (m *DifficultyManager) IncrRequests() {
 	}()
 }
 
-func (m *DifficultyManager) GetDifficulty() int {
+func (m *DifficultyManager) GetDifficultyPercent() int {
 	curRPS := m.getRPS()
 	curLevel := m.getCurrentLevel()
 
@@ -108,7 +112,7 @@ func (m *DifficultyManager) startLoop(
 		curReqBucket int64,
 		prevReqBucket int64,
 	) {
-		ticker := time.NewTicker(tickDuration)
+		ticker := time.NewTicker(bucketDuration)
 		defer ticker.Stop()
 
 		start := time.Now()
@@ -124,7 +128,7 @@ func (m *DifficultyManager) startLoop(
 				start = time.Now()
 			case chSendRPS := <-m.chGetRPS:
 				timeElapsed := time.Since(start)
-				chSendRPS <- m.calculateRPS(curReqBucket, prevReqBucket, timeElapsed, tickDuration)
+				chSendRPS <- m.calculateRPS(curReqBucket, prevReqBucket, timeElapsed, bucketDuration)
 			case chSendLevel := <-m.chGetCurLevel:
 				chSendLevel <- curLevel
 			case level := <-m.chSetCurLevel:
@@ -136,16 +140,16 @@ func (m *DifficultyManager) startLoop(
 	}(curLevel, curReqBucket, prevReqBucket)
 }
 
-func (m *DifficultyManager) calculateRPS(curReqBucket, prevReqBucket int64, timeElapsed, tickDuration time.Duration) float64 {
-	if timeElapsed > tickDuration {
-		timeElapsed = tickDuration
+func (m *DifficultyManager) calculateRPS(curReqBucket, prevReqBucket int64, timeElapsed, bucketDuration time.Duration) float64 {
+	if timeElapsed > bucketDuration {
+		timeElapsed = bucketDuration
 	}
 
-	fractionFromPrevBucket := float64(tickDuration.Nanoseconds()-timeElapsed.Nanoseconds()) / float64(tickDuration.Nanoseconds())
+	fractionFromPrevBucket := float64(bucketDuration.Nanoseconds()-timeElapsed.Nanoseconds()) / float64(bucketDuration.Nanoseconds())
 
 	totalRequests := float64(curReqBucket) + (float64(prevReqBucket) * fractionFromPrevBucket)
 
-	return totalRequests / tickDuration.Seconds()
+	return totalRequests / bucketDuration.Seconds()
 }
 
 var _ contracts.DifficultyManager = NoOpDifficultyManagerForClient{}
@@ -154,4 +158,4 @@ type NoOpDifficultyManagerForClient struct{}
 
 func (m NoOpDifficultyManagerForClient) IncrRequests() {}
 
-func (m NoOpDifficultyManagerForClient) GetDifficulty() int { return 0 }
+func (m NoOpDifficultyManagerForClient) GetDifficultyPercent() int { return 0 }

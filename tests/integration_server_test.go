@@ -15,7 +15,7 @@ import (
 	tccompose "github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/wait"
 
-	"github.com/bullgare/pow-ddos-protection/internal/infra/protocol/common"
+	"github.com/bullgare/pow-ddos-protection/internal/infra/protocol"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/transport/client"
 )
 
@@ -67,25 +67,25 @@ func (s *IntegrationServerTestSuite) Test_Basic_Integration() {
 	// ACT+ASSERT 1: auth req
 	respAuth, err := cl.SendRequest(
 		context.Background(),
-		common.Request{
-			Type:    common.MessageTypeClientAuthReq,
+		protocol.Request{
+			Type:    protocol.MessageTypeClientAuthReq,
 			Payload: nil,
 		},
 	)
 	require.NoError(t, err, "cl.SendRequest(auth)")
-	require.Equal(t, common.MessageTypeSrvAuthResp, respAuth.Type, "sending auth request")
+	require.Equal(t, protocol.MessageTypeSrvAuthResp, respAuth.Type, "sending auth request")
 	require.Contains(t, respAuth.Payload[0], "v1;", "auth response payload")
 
 	// ACT+ASSERT 2: invalid data request
 	respData1, err := cl.SendRequest(
 		context.Background(),
-		common.Request{
-			Type:    common.MessageTypeClientDataReq,
-			Payload: common.GeneratePayloadFromTokenAndSeed("wrong token", respAuth.Payload[0]),
+		protocol.Request{
+			Type:    protocol.MessageTypeClientDataReq,
+			Payload: protocol.GeneratePayloadFromTokenAndSeed("wrong token", respAuth.Payload[0]),
 		},
 	)
 	require.NoError(t, err, "cl.SendRequest(auth)")
-	require.Equal(t, common.MessageTypeError, respData1.Type, "sending invalid data request")
+	require.Equal(t, protocol.MessageTypeError, respData1.Type, "sending invalid data request")
 
 	// continue here with the client journey
 }
