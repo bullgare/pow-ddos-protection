@@ -206,6 +206,7 @@ And can be replaced with something else later if needed.
 
 ## Things to improve
 
+* make difficulty mutation logic a bit more sophisticated
 * add ci/cd
 * add more unit-tests
 * add a linter

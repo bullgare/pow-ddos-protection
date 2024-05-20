@@ -44,7 +44,10 @@ func (c *Client) SendRequest(ctx context.Context, req protocol.Request) (protoco
 	}
 	defer func() { _ = conn.Close() }()
 
-	_ = conn.SetDeadline(time.Now().Add(connectionTimeout))
+	err = conn.SetDeadline(time.Now().Add(connectionTimeout))
+	if err != nil {
+		return protocol.Response{}, fmt.Errorf("conn.SetDeadline: %w", err)
+	}
 	go func() {
 		<-ctx.Done()
 		_ = conn.SetDeadline(time.Now())

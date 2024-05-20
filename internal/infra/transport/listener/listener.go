@@ -107,7 +107,10 @@ func (l *Listener) processConnRequests(
 ) {
 	defer func() { _ = conn.Close() }()
 
-	_ = conn.SetDeadline(time.Now().Add(processConnTimeout))
+	err := conn.SetDeadline(time.Now().Add(processConnTimeout))
+	if err != nil {
+		return
+	}
 
 	ctxWithCancel, cancel := context.WithCancel(parentCtx)
 	defer cancel()
