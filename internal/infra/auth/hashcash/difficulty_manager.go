@@ -10,7 +10,7 @@ const DifficultyChangeStep = 3
 
 const bucketDuration = 5 * time.Second
 
-// NewDifficultyManager is a constructor.
+// NewDifficultyManager is a constructor; also starts the endless loop in a separate goroutine.
 //
 // DifficultyManager decides the difficulty level in percent based on the target RPS and current RPS.
 // More details - ./README.md#difficulty-manager.
@@ -19,9 +19,11 @@ func NewDifficultyManager(
 	levelChangeStep int,
 ) (_ *DifficultyManager, stopFunc func()) {
 	manager := &DifficultyManager{
+		// these are never changed
 		targetRPS: targetRPS,
 		step:      levelChangeStep,
 
+		// these are for changing manager's state
 		chIncrRequests: make(chan struct{}),
 		chGetRPS:       make(chan chan float64),
 		chGetCurLevel:  make(chan chan int),
@@ -100,7 +102,7 @@ func (m *DifficultyManager) getCurrentLevel() int {
 	return <-chSendLevel
 }
 
-// we only manipulate curLevel, curReqBucket, prevReqBucket fields here.
+// the core of the manager, here we manipulate curLevel, curReqBucket, prevReqBucket fields.
 // yes, it could be a bit inaccurate potentially as we are not using mutexes, but it is faster, which is more important here.
 func (m *DifficultyManager) startLoop(
 	curLevel int,
@@ -117,8 +119,8 @@ func (m *DifficultyManager) startLoop(
 
 		start := time.Now()
 		for {
-			// here we synchronously do 1 of 6 things:
-			// increment number of requests, change buckets, send average RPS for the tick period, get or set current level, or quit.
+			// here we atomically do 1 of 6 things:
+			// increment number of requests, change buckets, send average RPS for the time frame, get or set current level, or quit.
 			select {
 			case <-m.chIncrRequests:
 				curReqBucket++
@@ -128,7 +130,8 @@ func (m *DifficultyManager) startLoop(
 				start = time.Now()
 			case chSendRPS := <-m.chGetRPS:
 				timeElapsed := time.Since(start)
-				chSendRPS <- m.calculateRPS(curReqBucket, prevReqBucket, timeElapsed, bucketDuration)
+				rps := m.calculateRPS(curReqBucket, prevReqBucket, timeElapsed, bucketDuration)
+				chSendRPS <- rps
 			case chSendLevel := <-m.chGetCurLevel:
 				chSendLevel <- curLevel
 			case level := <-m.chSetCurLevel:

@@ -6,7 +6,7 @@ COPY . ./
 
 RUN go mod download
 
-RUN CGO_ENABLED=0 go build -o client ./cmd/client
+RUN CGO_ENABLED=0 go build -o client ./cmd/client&& go clean -cache -modcache
 
 FROM alpine:3.19
 

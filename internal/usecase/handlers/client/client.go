@@ -42,12 +42,12 @@ func RunWordOfWisdom(
 
 		shareInfo(fmt.Sprintf("%d: using token %q (generated in %s)", iteration, token, time.Since(start).String()))
 
+		// requesting a genius quote.
 		reqData := contracts.DataRequest{
 			OriginalSeed: authParams.Seed,
 			Token:        token,
 		}
 
-		// requesting a genius quote.
 		wowData, err := clientWOW.GetData(ctx, reqData)
 		if err != nil {
 			onError(fmt.Errorf("%d: clientWOW.GetData: %w", iteration, err))

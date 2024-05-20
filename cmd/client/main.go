@@ -3,8 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
+	"syscall"
+	"time"
+
+	"github.com/skovtunenko/graterm"
 
 	"github.com/bullgare/pow-ddos-protection/internal/infra/auth/hashcash"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/clients/wordofwisdom"
@@ -15,17 +20,19 @@ import (
 const envNetworkAddress = "NETWORK_ADDRESS"
 
 func main() {
-	// TODO add graceful shutdown
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	terminator, ctx := graterm.NewWithSignals(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 
-	err := run(ctx)
+	err := run(ctx, terminator)
 	if err != nil {
 		os.Exit(1)
 	}
+
+	if err = terminator.Wait(ctx, 10*time.Second); err != nil {
+		log.Printf("graceful termination period was timed out: %v", err)
+	}
 }
 
-func run(ctx context.Context) (err error) {
+func run(ctx context.Context, terminator *graterm.Terminator) (err error) {
 	lgr := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	lgr = lgr.With("type", "client")
 
@@ -54,13 +61,23 @@ func run(ctx context.Context) (err error) {
 		return fmt.Errorf("creating word of wisdom client: %w", err)
 	}
 
-	difficultyManager := hashcash.NoOpDifficultyManagerForClient{} // TODO Ideally, there should be 2 constructors and 2 interfaces (server/client)
+	difficultyManager := hashcash.NoOpDifficultyManagerForClient{} // TODO Ideally, there should be 2 constructors and 2 interfaces for authorizer instead (server/client)
 
 	authGenerator := hashcash.NewAuthorizer(hashcash.BitsLenMin, hashcash.BitsLenMax, hashcash.SaltLen, difficultyManager)
 
 	clientRunner := client.RunWordOfWisdom(authGenerator, wowClient, onError, shareInfoFunc(lgr))
 
-	clientRunner(ctx)
+	ctx, cancel := context.WithCancel(ctx)
+	terminator.WithOrder(1).Register(5*time.Second, func(ctx context.Context) {
+		cancel()
+		time.Sleep(1 * time.Second)
+	})
+
+	go func() {
+		clientRunner(ctx)
+		shareInfoFunc(lgr)("CLIENT IS EXITING")
+		os.Exit(0)
+	}()
 
 	return nil
 }

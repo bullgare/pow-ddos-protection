@@ -3,8 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
+	"syscall"
+	"time"
+
+	"github.com/skovtunenko/graterm"
 
 	"github.com/bullgare/pow-ddos-protection/internal/app/server"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/auth/hashcash"
@@ -14,17 +19,19 @@ import (
 )
 
 func main() {
-	// TODO add graceful shutdown
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	terminator, ctx := graterm.NewWithSignals(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 
-	err := run(ctx)
+	err := run(ctx, terminator)
 	if err != nil {
 		os.Exit(1)
 	}
+
+	if err = terminator.Wait(ctx, 10*time.Second); err != nil {
+		log.Printf("graceful termination period was timed out: %v", err)
+	}
 }
 
-func run(ctx context.Context) (err error) {
+func run(ctx context.Context, terminator *graterm.Terminator) (err error) {
 	lgr := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	lgr = lgr.With("type", "server")
 
@@ -57,8 +64,10 @@ func run(ctx context.Context) (err error) {
 
 	seedGenerator := hashcash.NewSeedGenerator(hashcash.SeedRandomLen)
 
-	difficultyManager, stop := hashcash.NewDifficultyManager(cfg.TargetRPS, hashcash.DifficultyChangeStep)
-	defer stop()
+	difficultyManager, stopManager := hashcash.NewDifficultyManager(cfg.TargetRPS, hashcash.DifficultyChangeStep)
+	terminator.WithOrder(1).Register(5*time.Second, func(ctx context.Context) {
+		stopManager()
+	})
 
 	authChecker := hashcash.NewAuthorizer(hashcash.BitsLenMin, hashcash.BitsLenMax, hashcash.SaltLen, difficultyManager)
 
@@ -69,12 +78,17 @@ func run(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("creating app server: %w", err)
 	}
-	defer srv.Stop()
 
-	err = srv.Start(ctx)
-	if err != nil {
-		return fmt.Errorf("starting app server: %w", err)
-	}
+	terminator.WithOrder(2).Register(5*time.Second, func(ctx context.Context) {
+		srv.Stop()
+	})
+
+	go func() {
+		err = srv.Start(ctx)
+		if err != nil {
+			onError(fmt.Errorf("starting app server: %w", err))
+		}
+	}()
 
 	return nil
 }

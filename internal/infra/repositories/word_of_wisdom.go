@@ -29,6 +29,7 @@ func NewWOW() WOW {
 
 var _ contracts.WOWQuotes = WOW{}
 
+// WOW is a static implementation of the domain layer contract.
 type WOW struct {
 	quotes []string
 }

@@ -39,6 +39,19 @@ func Data(
 			return ucontracts.DataResponse{}, fmt.Errorf("parsing config from raw token: %w", err)
 		}
 
+		originalSeed, originalCfg, err := authChecker.ParseConfigFrom(req.OriginalSeed)
+		if err != nil {
+			return ucontracts.DataResponse{}, fmt.Errorf("parsing config from req.OriginalSeed: %w", err)
+		}
+
+		if cfg.DifficultyLevelPercent != originalCfg.DifficultyLevelPercent {
+			return ucontracts.DataResponse{}, fmt.Errorf("token's difficulty (%d) differs from original (%d)", cfg.DifficultyLevelPercent, originalCfg.DifficultyLevelPercent)
+		}
+
+		if ok = authChecker.CheckTokenSeedMatches(token, originalSeed); !ok {
+			return ucontracts.DataResponse{}, errors.New("token's seed does not match original seed")
+		}
+
 		if !authChecker.Check(token, cfg) {
 			return ucontracts.DataResponse{}, errors.New("user provided invalid auth token")
 		}

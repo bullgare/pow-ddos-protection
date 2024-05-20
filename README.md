@@ -211,3 +211,7 @@ And can be replaced with something else later if needed.
 * add a linter
 * add load tests
 * use parametrized errors for better error segregation (not exposing internals to clients as it is now)
+
+## Excuses
+
+There are a lot of dependencies in `go.mod`, but the majority of them are related to integration tests.

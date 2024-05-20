@@ -107,7 +107,6 @@ func (l *Listener) processConnRequests(
 ) {
 	defer func() { _ = conn.Close() }()
 
-	// setting a timeout for connection to not exhaust number of available connections.
 	_ = conn.SetDeadline(time.Now().Add(processConnTimeout))
 
 	ctxWithCancel, cancel := context.WithCancel(parentCtx)

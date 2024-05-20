@@ -45,8 +45,7 @@ type Authorizer struct {
 }
 
 func (a Authorizer) GenerateToken(uniqueSeed string, cfg ucontracts.AuthorizerConfig) (string, error) {
-	bitsLen := a.calculateBitsLen(cfg)
-	token, err := hashcash.New(bitsLen, a.saltLen, authorizerVersionV1).Mint(uniqueSeed)
+	token, err := a.hashcashBy(cfg).Mint(uniqueSeed)
 	if err != nil {
 		return "", fmt.Errorf("generating token: %w", err)
 	}
@@ -58,9 +57,7 @@ func (a Authorizer) Check(token string, cfg ucontracts.AuthorizerConfig) bool {
 	// we only protect functionality guarded by these checks
 	a.difficultyManager.IncrRequests()
 
-	bitsLen := a.calculateBitsLen(cfg)
-
-	return hashcash.New(bitsLen, a.saltLen, authorizerVersionV1).Check(token)
+	return a.hashcashBy(cfg).Check(token)
 }
 
 func (a Authorizer) GenerateConfig() ucontracts.AuthorizerConfig {
@@ -88,6 +85,22 @@ func (a Authorizer) ParseConfigFrom(dataWithConfig string) (string, ucontracts.A
 	}
 
 	return chunks[2], ucontracts.AuthorizerConfig{DifficultyLevelPercent: level}, nil
+}
+
+const tokenChunksSeparator = ":"
+
+// CheckTokenSeedMatches ideally, should be implemented in the hashcash library.
+func (a Authorizer) CheckTokenSeedMatches(token, originalSeed string) bool {
+	chunks := strings.Split(token, tokenChunksSeparator)
+	if len(chunks) != 7 {
+		return false
+	}
+	return chunks[3] == originalSeed
+}
+
+func (a Authorizer) hashcashBy(cfg ucontracts.AuthorizerConfig) *hashcash.Hash {
+	bitsLen := a.calculateBitsLen(cfg)
+	return hashcash.New(bitsLen, a.saltLen, authorizerVersionV1)
 }
 
 func (a Authorizer) calculateBitsLen(cfg ucontracts.AuthorizerConfig) uint {

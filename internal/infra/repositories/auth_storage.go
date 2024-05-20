@@ -22,6 +22,7 @@ func NewAuthStorage(redisAddress string) (*AuthStorage, error) {
 		DB:       0,
 	})
 
+	// we ping here as it's one of the crucial parts of the app.
 	err := redisClient.Ping(context.Background()).Err()
 	if err != nil {
 		return nil, fmt.Errorf("connecting to %s: %w", redisAddress, err)

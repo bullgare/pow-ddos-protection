@@ -11,6 +11,7 @@ type AuthorizerConfig struct {
 type Authorizer interface {
 	GenerateToken(string, AuthorizerConfig) (string, error)
 
+	CheckTokenSeedMatches(token, originalSeed string) bool
 	Check(string, AuthorizerConfig) bool
 	GenerateConfig() AuthorizerConfig
 

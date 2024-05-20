@@ -54,6 +54,7 @@ func (s *Server) Stop() {
 	s.lsn.Stop()
 }
 
+// Handle knows how to handle protocol messages and which usecase handlers to invoke.
 func (s *Server) Handle(ctx context.Context, req protocol.Request) (protocol.Response, error) {
 	var (
 		resp protocol.Response
