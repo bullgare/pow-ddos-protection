@@ -1,0 +1,15 @@
+FROM golang:1.22 AS builder
+
+WORKDIR /app
+
+COPY . ./
+
+RUN go mod download
+
+RUN CGO_ENABLED=0 go build -o server ./cmd/server && go clean -cache -modcache
+
+FROM alpine:3.19
+
+COPY --from=builder /app/server .
+
+ENTRYPOINT ["/server"]
