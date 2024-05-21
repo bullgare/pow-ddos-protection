@@ -3,13 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"log/slog"
 	"os"
-	"syscall"
-	"time"
-
-	"github.com/skovtunenko/graterm"
 
 	"github.com/bullgare/pow-ddos-protection/internal/infra/auth/hashcash"
 	"github.com/bullgare/pow-ddos-protection/internal/infra/clients/wordofwisdom"
@@ -20,19 +15,16 @@ import (
 const envNetworkAddress = "NETWORK_ADDRESS"
 
 func main() {
-	terminator, ctx := graterm.NewWithSignals(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	err := run(ctx, terminator)
+	err := run(ctx)
 	if err != nil {
 		os.Exit(1)
 	}
-
-	if err = terminator.Wait(ctx, 10*time.Second); err != nil {
-		log.Printf("graceful termination period was timed out: %v", err)
-	}
 }
 
-func run(ctx context.Context, terminator *graterm.Terminator) (err error) {
+func run(ctx context.Context) (err error) {
 	lgr := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	lgr = lgr.With("type", "client")
 
@@ -67,17 +59,8 @@ func run(ctx context.Context, terminator *graterm.Terminator) (err error) {
 
 	clientRunner := client.RunWordOfWisdom(authGenerator, wowClient, onError, shareInfoFunc(lgr))
 
-	ctx, cancel := context.WithCancel(ctx)
-	terminator.WithOrder(1).Register(5*time.Second, func(ctx context.Context) {
-		cancel()
-		time.Sleep(1 * time.Second)
-	})
-
-	go func() {
-		clientRunner(ctx)
-		shareInfoFunc(lgr)("CLIENT IS EXITING")
-		os.Exit(0)
-	}()
+	clientRunner(ctx)
+	shareInfoFunc(lgr)("CLIENT IS EXITING")
 
 	return nil
 }

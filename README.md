@@ -12,16 +12,16 @@ Design and implement “Word of Wisdom” tcp server.
 
 ## Logic
 
-* Clients first send an authorization request (requests a challenge).
+* Clients first send an authorization request (request a challenge).
 * Server sends back a unique seed for the client together with a config for POW challenge, 
-  * and also stores the seed and the client's data in a cache.
+  * and also stores the seed and the client's data in a storage (redis).
 * Client performs some work to satisfy the rules sent by the server based on the seed.
 * Client then sends the data request providing a token, original seed and rules received from the server earlier.
 * Server checks the token and if it's okay, returns a quote from the Book.
   * It checks if client's identity matches the client that requested the challenge originally,
   it also checks the stored config. After checking provided token, data is removed from the cache.
 
-Server adjusts the complexity of the challenge based on the target RPS.
+Server adjusts the complexity of the challenge based on comparing current RPS vs target RPS.
 
 ## How to run
 
@@ -57,7 +57,7 @@ This project consists of a server and a client, implemented in Golang.
 
 Each of them has a separate `main` file, but they share the codebase.
 
-The project is using a sort of Clean Architecture pattern.
+The project is implementing a sort of Clean Architecture pattern.
 
 ### Server
 
@@ -105,7 +105,7 @@ Any request to a wow quote is added to a bucket (as `IncrRequests` is invoked).
 Any request for a challenge is leading to requesting a difficulty percentage (`GetDifficultyPercent`).
 
 Difficulty manager has 2 buckets: the current bucket and the previous bucket.
-And it has a bucket duration (5s). Every 5 seconds manager atomically switches buckets (current becomes previous, and current is being flushed).
+And it has a time frame (5s). Every 5 seconds manager atomically switches buckets (current becomes previous, and current is being flushed).
 
 For any `GetDifficultyPercent` request, 
 it calculates the fraction of number of requests from the previous bucket multiplied by the elapsed time,
@@ -146,8 +146,8 @@ it adds a `step` to the current difficulty, if it's lower, then it deducts a `st
 │   │   │   └── word_of_wisdom.go
 │   │   └── transport # tcp transport specific logic
 │   │       ├── client
-│   │       ├── connection.go
-│   │       └── listener
+│   │       ├── listener
+│   │       └── transport.go
 │   └── usecase # usecase layer
 │       ├── contracts
 │       │   ├── auth.go
@@ -167,7 +167,7 @@ it adds a `step` to the current difficulty, if it's lower, then it deducts a `st
 
 ## POW choice explanation
 
-I was checking the following 5:
+I've been checking the following 5 algorithms:
 * Hashcash
 * CryptoNight
 * Scrypt
@@ -183,7 +183,7 @@ Cons: could be vulnerable to ASICs, hard to predict generation time.
 
 #### CryptoNight
 
-Memory-bound, no good library, hard to check on a server side
+Memory-bound, no good open-source library in go, hard to check on a server side
 
 #### Scrypt
 Uses more memory for calculating a hash, not that easy to be brute-forced by ASICs.
@@ -215,4 +215,5 @@ And can be replaced with something else later if needed.
 
 ## Excuses
 
-There are a lot of dependencies in `go.mod`, but the majority of them are related to integration tests.
+There are a lot of dependencies in `go.mod`, but the majority of them are related to integration tests
+(it could potentially have a separate go module in the future though).
